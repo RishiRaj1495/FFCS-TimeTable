@@ -1,4 +1,4 @@
-# FFCS-TimeTable
+# FFCS-TimeTable (Version: 1.0.1)
 
 ⚠️ **Note:** This application is currently optimized for **Desktop/PC use only**. ⚠️
 
