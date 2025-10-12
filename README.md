@@ -2,13 +2,13 @@
 
 ⚠️ **Note:** This application is currently optimized for **Desktop/PC use only**. ⚠️
 
-# 📅 FFCS Timetable Builder
+#  FFCS Timetable Builder
 
 A modern, interactive timetable builder for VIT University's Fully Flexible Credit System (FFCS). Create, customize, and manage your semester timetable with an intuitive drag-and-drop interface.
 
 🔗 **Live Demo:** [https://ffcs-time-table.vercel.app/](https://ffcs-time-table.vercel.app/)
 
-> **Note: Desktop/PC use only**. Mobile version coming soon!
+> **Note: Desktop/PC use only**. Mobile version still in development!
 
 ---
 
@@ -53,7 +53,7 @@ A modern, interactive timetable builder for VIT University's Fully Flexible Cred
 
 ## 🖥️ System Requirements
 
-- **Desktop/PC Only** (Mobile version in development)
+- **Desktop/PC & Mobile** (Mobile version still in development phase)
 - Modern web browser (Chrome, Firefox, Edge, Safari)
 - JavaScript enabled
 - Minimum screen resolution: 1024x768
@@ -243,6 +243,6 @@ For issues or questions:
 
 ---
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Last Updated:** October 2025  
 **Status:** 🟢 Active Development
