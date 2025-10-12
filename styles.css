@@ -12,6 +12,48 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+/* Mobile Menu Toggle Button */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: #5670a5;
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    background: #445885;
+    transform: scale(1.05);
+}
+
+/* Mobile Close Button */
+.mobile-close-btn {
+    display: none;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    z-index: 1002;
 }
 
 /* Container Layout */
@@ -37,6 +79,7 @@ body {
     overflow-y: auto;
     position: sticky;
     top: 20px;
+    transition: transform 0.3s ease;
 }
 
 .sidebar h3 {
@@ -125,7 +168,6 @@ body {
     transition: all 0.2s ease;
 }
 
-/* White color option special styling */
 .color-option.white-option {
     border: 2px solid #ddd !important;
 }
@@ -187,7 +229,7 @@ body {
     gap: 20px;
 }
 
-/* Page Header Styles - UPDATED */
+/* Page Header Styles */
 .page-header {
     background: linear-gradient(135deg, #5670a5 0%, #445885 100%);
     padding: 25px 30px;
@@ -307,6 +349,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Timetable Styles */
@@ -349,7 +392,6 @@ body {
     min-width: 50px;
 }
 
-/* Small lunch text in rows */
 .lunch-small {
     font-size: 0.75rem;
     padding: 8px;
@@ -366,7 +408,6 @@ body {
     padding: 8px;
 }
 
-/* Darker background placeholder text that's always visible */
 .slot::before {
     content: attr(data-placeholder);
     position: absolute;
@@ -381,7 +422,6 @@ body {
     color: #2c3e50;
 }
 
-/* Make sure user content is above the placeholder */
 .slot {
     z-index: 1;
 }
@@ -395,7 +435,7 @@ body {
     box-shadow: inset 0 0 0 3px #2c3e50;
 }
 
-/* Flash Fade with Shimmer using #03045e */
+/* Flash Fade with Shimmer */
 .slot.highlight {
     animation: flashFade 1.2s ease-in-out infinite;
     border: 3px solid #03045e !important;
@@ -405,7 +445,6 @@ body {
     overflow: hidden;
 }
 
-/* Temporarily hide highlight for export */
 .slot.temp-no-highlight {
     animation: none !important;
     border: 2px solid #ddd !important;
@@ -471,7 +510,6 @@ body {
     outline-offset: 2px;
 }
 
-/* Make sure text content is visible over background */
 .slot:not(:empty) {
     font-weight: 500;
     position: relative;
@@ -674,70 +712,6 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-    .container {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-        max-height: none;
-        position: static;
-    }
-    
-    .tool-btn {
-        display: inline-flex;
-        width: auto;
-        padding: 10px 20px;
-        margin: 5px;
-    }
-    
-    .color-palette {
-        margin-top: 15px;
-    }
-}
-
-@media (max-width: 768px) {
-    .page-header {
-        padding: 18px 20px;
-    }
-    
-    .page-header h1 {
-        font-size: 1.6rem;
-        letter-spacing: 2px;
-    }
-    
-    .search-container {
-        max-width: 100%;
-        padding: 0 10px;
-    }
-    
-    .timetable th,
-    .timetable td {
-        padding: 8px;
-        font-size: 0.85rem;
-    }
-    
-    .footer-content {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .slot {
-        min-width: 70px;
-        min-height: 40px;
-    }
-    
-    .slot::before {
-        font-size: 1.2rem;
-    }
-    
-    .format-options {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 10px;
@@ -758,12 +732,270 @@ body {
     background: #445885;
 }
 
+/* 
+   RESPONSIVE DESIGN - TABLET & MOBILE
+*/
+
+/* Tablet Styles (768px - 1024px) */
+@media (max-width: 1024px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        max-height: none;
+        position: static;
+        margin-bottom: 20px;
+    }
+    
+    .tool-btn {
+        display: inline-flex;
+        width: auto;
+        padding: 10px 20px;
+        margin: 5px;
+    }
+    
+    .color-palette {
+        margin-top: 15px;
+    }
+    
+    .page-header h1 {
+        font-size: 2rem;
+        letter-spacing: 2px;
+    }
+}
+
+/* Mobile Styles (max-width: 768px) */
+@media (max-width: 768px) {
+    body {
+        padding-top: 70px;
+    }
+    
+    /* Show mobile menu toggle */
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Mobile sidebar styling */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 280px;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 1002;
+        padding: 60px 20px 20px 20px;
+        overflow-y: auto;
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.active {
+        left: 0;
+    }
+    
+    /* Show mobile close button */
+    .mobile-close-btn {
+        display: block;
+    }
+    
+    .container {
+        padding: 10px;
+        gap: 15px;
+    }
+    
+    .main-content {
+        gap: 15px;
+    }
+    
+    /* Header responsive */
+    .page-header {
+        padding: 18px 15px;
+    }
+    
+    .page-header h1 {
+        font-size: 1.4rem;
+        letter-spacing: 1.5px;
+    }
+    
+    /* Search bar responsive */
+    .search-container {
+        max-width: 100%;
+        padding: 0;
+    }
+    
+    .search-wrapper {
+        padding: 4px 4px 4px 15px;
+    }
+    
+    #searchSlot {
+        font-size: 0.9rem;
+        padding: 8px 6px;
+    }
+    
+    .clear-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    /* Timetable responsive */
+    .timetable-wrapper {
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .timetable {
+        min-width: 800px;
+    }
+    
+    .timetable th,
+    .timetable td {
+        padding: 8px 6px;
+        font-size: 0.75rem;
+    }
+    
+    .slot {
+        min-width: 70px;
+        min-height: 45px;
+        padding: 6px;
+    }
+    
+    .slot::before {
+        font-size: 1.1rem;
+    }
+    
+    /* Modal responsive */
+    .modal-content {
+        width: 95%;
+        max-width: 400px;
+    }
+    
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .modal-body {
+        padding: 20px 15px;
+    }
+    
+    .format-options {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .format-btn {
+        padding: 15px;
+    }
+    
+    /* Footer responsive */
+    .footer {
+        padding: 15px 10px;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+    
+    .designer-info p {
+        font-size: 0.85rem;
+    }
+    
+    .social-links a {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+    }
+    
+    /* Tool buttons in sidebar */
+    .tool-btn {
+        width: 100%;
+        padding: 12px;
+        margin: 0 0 10px 0;
+        font-size: 0.9rem;
+    }
+    
+    /* Color grid responsive */
+    .color-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+
+/* Small Mobile Styles (max-width: 480px) */
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.2rem;
+        letter-spacing: 1px;
+    }
+    
+    .timetable {
+        min-width: 650px;
+    }
+    
+    .timetable th,
+    .timetable td {
+        padding: 6px 4px;
+        font-size: 0.7rem;
+    }
+    
+    .slot {
+        min-width: 60px;
+        min-height: 40px;
+    }
+    
+    .slot::before {
+        font-size: 1rem;
+    }
+    
+    .day-column {
+        font-size: 0.7rem;
+    }
+    
+    .lunch-small {
+        font-size: 0.65rem;
+    }
+}
+
+/* Landscape Mobile Optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+    body {
+        padding-top: 60px;
+    }
+    
+    .mobile-menu-toggle {
+        top: 10px;
+        left: 10px;
+        width: 45px;
+        height: 45px;
+    }
+    
+    .page-header {
+        padding: 12px 15px;
+    }
+    
+    .page-header h1 {
+        font-size: 1.3rem;
+    }
+}
+
 /* Print Styles */
 @media print {
     .sidebar,
     .search-container,
     .footer,
-    .page-header {
+    .page-header,
+    .mobile-menu-toggle,
+    .mobile-close-btn {
         display: none !important;
     }
     
@@ -774,5 +1006,23 @@ body {
     .timetable-wrapper {
         box-shadow: none;
         padding: 0;
+    }
+    
+    body {
+        padding-top: 0;
+    }
+}
+
+/* Overlay for mobile menu */
+@media (max-width: 768px) {
+    .sidebar.active::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
     }
 }
