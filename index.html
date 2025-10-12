@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIT FFCS Timetable Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FFCS Timetable Builder</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Libraries for Image and PDF Export -->
@@ -11,9 +11,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+    <!-- Mobile Menu Toggle Button -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div class="container">
         <!-- Left Sidebar Toolbar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
+            <!-- Mobile Close Button -->
+            <button class="mobile-close-btn" id="mobileCloseBtn">
+                <i class="fas fa-times"></i>
+            </button>
+            
             <h3>Tools</h3>
             <button class="tool-btn" id="newBtn" title="New Timetable">
                 <i class="fas fa-file"></i>
@@ -71,7 +81,7 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- NEW: Page Header -->
+            <!-- Page Header -->
             <div class="page-header">
                 <h1>FFCS TIMETABLE</h1>
             </div>
@@ -223,7 +233,7 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="designer-info">
-                <p>| Designed by <strong>Rishi Raj</strong>  </p>
+                <p>Designed by <strong>Rishi Raj</strong></p>
             </div>
             <div class="social-links">
                 <a href="https://github.com/RishiRaj1495" target="_blank" title="GitHub">
