@@ -46,6 +46,7 @@ function init() {
     saveState();
     setupEventListeners();
     setupMobileMenu();
+    setupMobileBottomBar();
     loadFromLocalStorage();
     setupSubjectForm();
     renderSubjectsTable();
@@ -126,9 +127,21 @@ function setupEventListeners() {
         });
 
         slot.addEventListener('blur', () => saveState());
-        slot.addEventListener('touchend', function (e) {
-            if (e.cancelable) e.preventDefault();
-            this.focus();
+
+        // Mobile touch: single tap = toggle slot selection (no zoom)
+        let touchStartTime = 0;
+        slot.addEventListener('touchstart', function(e) {
+            touchStartTime = Date.now();
+        }, { passive: true });
+
+        slot.addEventListener('touchend', function(e) {
+            const duration = Date.now() - touchStartTime;
+            if (duration < 300) {
+                // Short tap → treat as click (toggle slot)
+                if (e.cancelable) e.preventDefault();
+                handleSlotToggle(this);
+            }
+            // Long tap → allow native text editing
         });
     });
 
@@ -152,6 +165,26 @@ function setupEventListeners() {
     window.addEventListener('resize', handleResize);
 }
 function handleResize() { if (window.innerWidth > 768) { closeMobileMenu(); document.body.style.overflow='auto'; } }
+
+// ─────────────────────────────────────────────────────────────
+// MOBILE BOTTOM BAR
+// ─────────────────────────────────────────────────────────────
+function setupMobileBottomBar() {
+    const mobMenuBtn    = document.getElementById('mobMenuBtn');
+    const mobUndoBtn    = document.getElementById('mobUndoBtn');
+    const mobColorBtn   = document.getElementById('mobColorBtn');
+    const mobDownloadBtn = document.getElementById('mobDownloadBtn');
+    const mobResetBtn   = document.getElementById('mobResetBtn');
+
+    if (mobMenuBtn)     mobMenuBtn.addEventListener('click',     openMobileMenu);
+    if (mobUndoBtn)     mobUndoBtn.addEventListener('click',     undo);
+    if (mobColorBtn)    mobColorBtn.addEventListener('click',    () => {
+        colorPalette.classList.toggle('active');
+        openMobileMenu();
+    });
+    if (mobDownloadBtn) mobDownloadBtn.addEventListener('click', showDownloadModal);
+    if (mobResetBtn)    mobResetBtn.addEventListener('click',    reset);
+}
 
 // ─────────────────────────────────────────────────────────────
 // PENDING-GROUP SELECTION MODEL

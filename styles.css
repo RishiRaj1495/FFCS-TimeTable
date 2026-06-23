@@ -157,6 +157,9 @@ body {
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin-bottom: 15px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .color-option {
@@ -1293,17 +1296,90 @@ body {
     }
 }
 
+/* ─── MOBILE BOTTOM TOOLBAR ─── */
+.mobile-bottom-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: white;
+    border-top: 1px solid #dde3f0;
+    box-shadow: 0 -4px 16px rgba(86,112,165,0.15);
+    padding: 8px 4px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.mobile-bottom-bar-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.mob-bar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #5670a5;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 10px;
+    transition: background 0.2s, color 0.2s;
+    min-width: 48px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mob-bar-btn i {
+    font-size: 1.3rem;
+}
+
+.mob-bar-btn:active {
+    background: #eef1f9;
+    color: #445885;
+    transform: scale(0.93);
+}
+
+.mob-bar-btn.danger {
+    color: #e74c3c;
+}
+
+/* Timetable horizontal scroll hint on mobile */
+.timetable-scroll-hint {
+    display: none;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #95a5a6;
+    padding: 4px 0 2px;
+    letter-spacing: 0.3px;
+}
+
+.timetable-scroll-hint i {
+    margin: 0 4px;
+    color: #5670a5;
+}
+
 /* Mobile Styles (max-width: 768px) */
 @media (max-width: 768px) {
     body {
-        padding-top: 70px;
+        padding-top: 0;
+        padding-bottom: 76px; /* space for bottom bar */
     }
-    
-    /* Show mobile menu toggle */
+
+    /* Show mobile bottom bar, hide hamburger toggle */
+    .mobile-bottom-bar {
+        display: block;
+    }
+
     .mobile-menu-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: none; /* replaced by bottom bar */
     }
     
     /* Mobile sidebar styling */
@@ -1311,14 +1387,15 @@ body {
         position: fixed;
         top: 0;
         left: -100%;
-        width: 280px;
+        width: 300px;
         height: 100vh;
         max-height: 100vh;
         z-index: 1002;
-        padding: 60px 20px 20px 20px;
+        padding: 20px 20px 80px 20px;
         overflow-y: auto;
-        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
         transition: left 0.3s ease;
+        border-radius: 0 16px 16px 0;
     }
     
     .sidebar.active {
@@ -1332,20 +1409,21 @@ body {
     
     .container {
         padding: 10px;
-        gap: 15px;
+        gap: 12px;
     }
     
     .main-content {
-        gap: 15px;
+        gap: 12px;
     }
     
     /* Header responsive */
     .page-header {
-        padding: 18px 15px;
+        padding: 16px 15px;
+        border-radius: 12px;
     }
     
     .page-header h1 {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         letter-spacing: 1.5px;
     }
     
@@ -1365,45 +1443,121 @@ body {
     }
     
     .clear-btn {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Scroll hint visible on mobile */
+    .timetable-scroll-hint {
+        display: block;
     }
     
     /* Timetable responsive */
     .timetable-wrapper {
-        padding: 10px;
-        border-radius: 8px;
+        padding: 10px 8px;
+        border-radius: 10px;
+        /* Custom scrollbar for mobile */
+        scrollbar-width: thin;
+        scrollbar-color: #5670a5 #eaedf4;
     }
     
     .timetable {
-        min-width: 600px;
+        min-width: 560px;
     }
     
     .timetable th,
     .timetable td {
-        padding: 8px 6px;
-        font-size: 0.75rem;
+        padding: 7px 4px;
+        font-size: 0.72rem;
     }
     
     .slot {
         min-width: 0;
-        min-height: 40px;
+        min-height: 44px; /* bigger touch target */
         padding: 4px 2px;
         font-size: 0.68rem;
+        /* Disable hover transform on touch to avoid stuck states */
+    }
+
+    .slot:hover {
+        transform: none;
+    }
+
+    .slot:active {
+        box-shadow: inset 0 0 0 2px #5670a5;
     }
     
     .slot::before {
-        font-size: 0.9rem;
+        font-size: 0.88rem;
+    }
+
+    /* Stack timetable + subject panel vertically */
+    .timetable-and-panel {
+        flex-direction: column;
+    }
+
+    /* Subject panel full width on mobile */
+    .subject-panel {
+        width: 100%;
+        min-width: unset;
+        position: static;
+        border-radius: 12px;
+    }
+
+    .slot-badge-value {
+        font-size: 1.2rem;
+    }
+
+    .subject-form {
+        padding: 14px 16px;
+    }
+
+    .subject-input {
+        font-size: 16px; /* prevents iOS zoom on focus */
+        padding: 10px 12px;
+    }
+
+    .venue-options {
+        gap: 6px;
+    }
+
+    .venue-btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+        min-height: 40px; /* touch target */
+    }
+
+    .add-subject-btn {
+        padding: 14px;
+        font-size: 1rem;
+    }
+
+    /* Subjects table responsive */
+    .subjects-table-wrapper {
+        border-radius: 10px;
+    }
+
+    .subjects-table th,
+    .subjects-table td {
+        padding: 8px 6px;
+        font-size: 0.78rem;
+    }
+
+    .table-delete-btn {
+        padding: 7px 10px;
+        font-size: 0.75rem;
+        min-height: 36px;
     }
     
     /* Modal responsive */
     .modal-content {
         width: 95%;
         max-width: 400px;
+        border-radius: 16px;
     }
     
     .modal-header {
-        padding: 15px 20px;
+        padding: 16px 20px;
     }
     
     .modal-header h3 {
@@ -1411,51 +1565,58 @@ body {
     }
     
     .modal-body {
-        padding: 20px 15px;
+        padding: 20px 16px;
     }
     
     .format-options {
-        grid-template-columns: 1fr;
-        gap: 12px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
     
     .format-btn {
-        padding: 15px;
+        padding: 16px 12px;
+        min-height: 80px;
     }
     
     /* Footer responsive */
     .footer {
-        padding: 15px 10px;
+        padding: 14px 10px;
     }
     
     .footer-content {
         flex-direction: column;
         text-align: center;
-        gap: 12px;
+        gap: 10px;
     }
     
     .designer-info p {
-        font-size: 0.85rem;
+        font-size: 0.82rem;
     }
     
     .social-links a {
-        width: 38px;
-        height: 38px;
-        font-size: 1rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.05rem;
     }
     
-    /* Tool buttons in sidebar */
+    /* Tool buttons in sidebar (still full width for drawer) */
     .tool-btn {
         width: 100%;
-        padding: 12px;
+        padding: 13px;
         margin: 0 0 10px 0;
         font-size: 0.9rem;
+        min-height: 48px;
     }
     
     /* Color grid responsive */
     .color-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        max-height: 200px;
+    }
+
+    .color-option {
+        min-height: 36px;
     }
 }
 
@@ -1463,36 +1624,53 @@ body {
 
 /* Small Mobile Styles (max-width: 480px) */
 @media (max-width: 480px) {
+    body {
+        padding-bottom: 72px;
+    }
+
     .page-header h1 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         letter-spacing: 1px;
     }
     
     .timetable {
-        min-width: 480px;
+        min-width: 460px;
     }
     
     .timetable th,
     .timetable td {
-        padding: 6px 4px;
-        font-size: 0.7rem;
+        padding: 6px 3px;
+        font-size: 0.68rem;
     }
     
     .slot {
-        min-width: 60px;
-        min-height: 40px;
+        min-height: 42px;
     }
     
     .slot::before {
-        font-size: 1rem;
+        font-size: 0.85rem;
     }
     
     .day-column {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
+        width: 36px;
+        min-width: 36px;
     }
     
+    .lunch-column,
     .lunch-small {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
+        width: 34px;
+        min-width: 34px;
+    }
+
+    .mob-bar-btn {
+        font-size: 0.6rem;
+        padding: 5px 7px;
+    }
+
+    .mob-bar-btn i {
+        font-size: 1.2rem;
     }
 }
 
