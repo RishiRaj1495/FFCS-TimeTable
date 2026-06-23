@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // GLOBALS
 // ─────────────────────────────────────────────────────────────
-let selectedColor = '#caf0f8';
+let selectedColor = '#e0f7fa';
 let history       = [];
 let historyIndex  = -1;
 let ctrlSelectedSlots = new Set(); // Ctrl+click → bulk delete
