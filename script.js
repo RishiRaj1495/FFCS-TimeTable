@@ -442,6 +442,7 @@ function renderSubjectsTable() {
             <td class="slot-group-cell">${slotTags}${venueInline}</td>
             <td class="subject-name-cell">${grp.subject}</td>
             <td>${grp.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
+            <td>${grp.venue ? `<span class="venue-tag">${grp.venue}</span>` : '<span style="color:#b0bec5;">—</span>'}</td>
             <td><span class="color-dot" style="background:${grp.color};" title="${grp.color}"></span></td>
             <td><button class="table-delete-btn" onclick="deleteSubjectGroup('${deleteKey}')"><i class="fas fa-trash"></i> Remove</button></td>`;
         tbody.appendChild(tr);
@@ -509,11 +510,11 @@ function clearSearch() { searchInput.value = ''; slots.forEach(s => s.classList.
 // TOOL ACTIONS
 // ─────────────────────────────────────────────────────────────
 function createNew() {
-    if (confirm('Create a new timetable? The timetable grid will be cleared but your subject list will be kept.')) {
+    if (confirm('Create a new timetable? This will clear the grid and subject list.')) {
         saveState();
         slots.forEach(s => clearSlotVisual(s));
         ctrlSelectedSlots.clear(); clearPendingGroup(); clearSearch();
-        // Do NOT clear subjects — keep the list so user can re-apply them
+        subjects = []; saveSubjectsToLocalStorage(); renderSubjectsTable();
         saveToLocalStorage();
     }
 }
@@ -559,15 +560,11 @@ function saveToLocalStorage() {
     }));
 }
 function loadFromLocalStorage() {
-    const saved = localStorage.getItem('timetableData');
-    if (!saved) return;
-    try {
-        const data = JSON.parse(saved);
-        data.slots.forEach((d,i) => {
-            if (!slots[i]) return;
-            slots[i].textContent=d.content||''; slots[i].style.backgroundColor=d.bgColor||'#eaedf4'; slots[i].style.color=d.color||'#2c3e50';
-        });
-    } catch(e) { console.error('Load error:',e); }
+    // Clear everything on fresh page load — timetable grid AND subject list
+    slots.forEach(s => clearSlotVisual(s));
+    subjects = [];
+    saveSubjectsToLocalStorage();
+    renderSubjectsTable();
 }
 
 // ─────────────────────────────────────────────────────────────
