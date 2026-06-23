@@ -407,7 +407,7 @@ body {
 .slot {
     background: #eaedf4;
     min-width: 0;         /* let table-layout: fixed control width */
-    min-height: 48px;
+    min-height: 54px;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -1090,6 +1090,25 @@ body {
     margin-left: 5px;
     vertical-align: middle;
     white-space: nowrap;
+}
+
+/* Inside timetable slot cell */
+.slot-subject-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.slot-venue-label {
+    display: block;
+    font-size: 0.63rem;
+    opacity: 0.82;
+    margin-top: 2px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    word-break: break-word;
 }
 
 .venue-tag {

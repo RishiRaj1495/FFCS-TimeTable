@@ -242,7 +242,8 @@ function clearPendingGroup() {
         if (saved) {
             s.style.backgroundColor = saved.color;
             s.style.color           = getContrastColor(saved.color);
-            s.textContent           = saved.subject;
+            const vl = saved.venue ? `<span class="slot-venue-label">${saved.venue}</span>` : '';
+            s.innerHTML             = `<span class="slot-subject-label">${saved.subject}</span>${vl}`;
         } else {
             clearSlotVisual(s);
         }
@@ -309,8 +310,9 @@ function handleAddSubject() {
         const idx    = subjects.findIndex(s => s.slot === slotId);
         if (idx >= 0) subjects[idx] = entry; else subjects.push(entry);
 
-        // Commit visual
-        slotEl.textContent           = subjectName;
+        // Commit visual — show subject name + venue inside the slot
+        const venueLabel = venue ? `<span class="slot-venue-label">${venue}</span>` : '';
+        slotEl.innerHTML             = `<span class="slot-subject-label">${subjectName}</span>${venueLabel}`;
         slotEl.style.backgroundColor = selectedColor;
         slotEl.style.color           = getContrastColor(selectedColor);
         slotEl.classList.remove('form-selected');
@@ -457,7 +459,7 @@ function saveSubjectsToLocalStorage() { localStorage.setItem('subjectsData', JSO
 function clearSlotVisual(slotEl) {
     slotEl.style.backgroundColor = '#eaedf4';
     slotEl.style.color           = '#2c3e50';
-    slotEl.textContent           = '';
+    slotEl.innerHTML             = '';
     slotEl.classList.remove('highlight','ctrl-selected','form-selected');
 }
 
@@ -497,7 +499,7 @@ function handleSearch(e) {
     let first = null;
     slots.forEach(s => {
         s.classList.remove('highlight');
-        if (term && (s.dataset.slot.toUpperCase().includes(term) || s.textContent.toUpperCase().includes(term))) {
+        if (term && (s.dataset.slot.toUpperCase().includes(term) || s.innerText.toUpperCase().includes(term))) {
             s.classList.add('highlight');
             if (!first) first = s;
         }
@@ -538,7 +540,7 @@ function reset() {
 // HISTORY
 // ─────────────────────────────────────────────────────────────
 function saveState() {
-    const state = { slots: Array.from(slots).map(s => ({ content: s.textContent, bgColor: s.style.backgroundColor, color: s.style.color })) };
+    const state = { slots: Array.from(slots).map(s => ({ content: s.innerHTML, bgColor: s.style.backgroundColor, color: s.style.color })) };
     history = history.slice(0, historyIndex+1);
     history.push(state); historyIndex++;
     if (history.length > 50) { history.shift(); historyIndex--; }
@@ -547,7 +549,7 @@ function saveState() {
 function undo() { if (historyIndex > 0) { historyIndex--; restoreState(history[historyIndex]); } else alert('Nothing to undo'); }
 function redo() { if (historyIndex < history.length-1) { historyIndex++; restoreState(history[historyIndex]); } else alert('Nothing to redo'); }
 function restoreState(state) {
-    state.slots.forEach((d,i) => { slots[i].textContent=d.content; slots[i].style.backgroundColor=d.bgColor||'#eaedf4'; slots[i].style.color=d.color||'#2c3e50'; });
+    state.slots.forEach((d,i) => { slots[i].innerHTML=d.content||''; slots[i].style.backgroundColor=d.bgColor||'#eaedf4'; slots[i].style.color=d.color||'#2c3e50'; });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -555,7 +557,7 @@ function restoreState(state) {
 // ─────────────────────────────────────────────────────────────
 function saveToLocalStorage() {
     localStorage.setItem('timetableData', JSON.stringify({
-        slots: Array.from(slots).map(s => ({ content: s.textContent, bgColor: s.style.backgroundColor, color: s.style.color })),
+        slots: Array.from(slots).map(s => ({ content: s.innerHTML, bgColor: s.style.backgroundColor, color: s.style.color })),
         timestamp: new Date().toISOString()
     }));
 }
