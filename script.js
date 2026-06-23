@@ -101,6 +101,7 @@ function setupEventListeners() {
             colorOptions.forEach(opt => opt.classList.remove('selected'));
             this.classList.add('selected');
             selectedColor = this.dataset.color;
+            updateColorPreview();
         });
     });
 
@@ -108,6 +109,7 @@ function setupEventListeners() {
     applyCustomBtn.addEventListener('click', () => {
         selectedColor = customColorInput.value;
         colorOptions.forEach(opt => opt.classList.remove('selected'));
+        updateColorPreview();
     });
 
     // Slot Interaction
@@ -126,11 +128,8 @@ function setupEventListeners() {
                     selectedSlots.delete(this);
                 }
             } else {
-                // Mark as active for the subject form
+                // Select slot for the subject form — don't auto-apply color
                 handleSlotFormClick(this);
-                this.style.backgroundColor = selectedColor;
-                this.style.color = getContrastColor(selectedColor);
-                saveState();
             }
         });
 
@@ -636,107 +635,170 @@ function setupSubjectForm() {
         addSubjectBtn.addEventListener('click', handleAddSubject);
     }
 
-    // Allow pressing Enter in inputs to submit
+    // Enter key in text inputs submits form
     ['subjectName', 'facultyName', 'venueInput'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') handleAddSubject();
-            });
-        }
+        if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') handleAddSubject(); });
     });
+
+    // Venue quick-select buttons
+    document.querySelectorAll('.venue-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Toggle active state
+            const wasActive = this.classList.contains('active');
+            document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
+            if (!wasActive) {
+                this.classList.add('active');
+                document.getElementById('venueInput').value = this.dataset.venue;
+            } else {
+                document.getElementById('venueInput').value = '';
+            }
+        });
+    });
+
+    // Typing in custom venue field clears button selection
+    const venueInput = document.getElementById('venueInput');
+    if (venueInput) {
+        venueInput.addEventListener('input', function() {
+            // If typed value doesn't match a button, deselect all buttons
+            const val = this.value.trim().toUpperCase();
+            document.querySelectorAll('.venue-btn').forEach(b => {
+                if (b.dataset.venue === val) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+        });
+    }
+
+    // Update color preview whenever color changes (piggyback on existing color events)
+    updateColorPreview();
 
     // Load saved subjects
     const savedSubjects = localStorage.getItem('subjectsData');
     if (savedSubjects) {
-        try {
-            subjects = JSON.parse(savedSubjects);
-        } catch (e) {
-            subjects = [];
-        }
+        try { subjects = JSON.parse(savedSubjects); } catch(e) { subjects = []; }
     }
 }
 
+function updateColorPreview() {
+    const swatch = document.getElementById('colorPreviewSwatch');
+    const text   = document.getElementById('colorPreviewText');
+    if (swatch) swatch.style.background = selectedColor;
+    if (text)   text.textContent = selectedColor.toUpperCase();
+}
+
+// Override color selection to also refresh preview
+const _origSetupEventListeners = setupEventListeners;
+
 function handleSlotFormClick(slot) {
-    // Deselect previous
+    // Remove form-selected from any previous slot
     if (activeFormSlot && activeFormSlot !== slot) {
         activeFormSlot.classList.remove('form-selected');
     }
-
     activeFormSlot = slot;
     slot.classList.add('form-selected');
 
+    // Update slot badge
+    const badge = document.getElementById('slotBadge');
+    const badgeVal = document.getElementById('slotBadgeValue');
+    if (badge) badge.classList.add('has-slot');
+    if (badgeVal) badgeVal.textContent = slot.dataset.slot;
+
+    // Enable add button
+    const addBtn = document.getElementById('addSubjectBtn');
+    if (addBtn) addBtn.disabled = false;
+
     // Update hint
-    const hint = document.querySelector('.slot-select-hint');
+    const hint = document.getElementById('slotHint');
     if (hint) {
         hint.classList.add('active-slot');
-        hint.innerHTML = `<i class="fas fa-check-circle"></i> Slot <strong>${slot.dataset.slot}</strong> selected — fill in details and click Add Subject.`;
+        hint.innerHTML = `<i class="fas fa-check-circle"></i>&nbsp;Slot <strong>${slot.dataset.slot}</strong> selected — fill in details above.`;
     }
 
-    // Pre-fill subject name if slot already has text
-    const subjectNameEl = document.getElementById('subjectName');
-    if (subjectNameEl && slot.textContent.trim() && !subjectNameEl.value) {
-        subjectNameEl.value = slot.textContent.trim();
+    // ALWAYS clear the form fields for fresh entry (this is the bug fix)
+    document.getElementById('subjectName').value = '';
+    document.getElementById('facultyName').value = '';
+    document.getElementById('venueInput').value = '';
+    document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
+
+    // Pre-fill if there's an existing subject for this slot
+    const existing = subjects.find(s => s.slot === slot.dataset.slot);
+    if (existing) {
+        document.getElementById('subjectName').value = existing.subject || '';
+        document.getElementById('facultyName').value = existing.faculty || '';
+        document.getElementById('venueInput').value  = existing.venue  || '';
+        // Highlight matching venue button
+        document.querySelectorAll('.venue-btn').forEach(b => {
+            if (b.dataset.venue === (existing.venue || '').toUpperCase()) b.classList.add('active');
+        });
     }
+
+    // Focus subject name
+    setTimeout(() => document.getElementById('subjectName').focus(), 50);
+
+    // Update color preview
+    updateColorPreview();
 }
 
 function handleAddSubject() {
     if (!activeFormSlot) {
-        alert('Please click a slot on the timetable first to select it.');
+        alert('Please click a slot on the timetable first.');
         return;
     }
 
-    const subjectNameEl = document.getElementById('subjectName');
-    const facultyNameEl = document.getElementById('facultyName');
-    const venueEl = document.getElementById('venueInput');
-
-    const subjectName = subjectNameEl.value.trim();
-    const facultyName = facultyNameEl.value.trim();
-    const venue = venueEl.value.trim();
+    const subjectName = document.getElementById('subjectName').value.trim();
+    const facultyName = document.getElementById('facultyName').value.trim();
+    const venue       = document.getElementById('venueInput').value.trim();
 
     if (!subjectName) {
         alert('Please enter a subject name.');
-        subjectNameEl.focus();
+        document.getElementById('subjectName').focus();
         return;
     }
 
     const slotId = activeFormSlot.dataset.slot;
+    const entry = { slot: slotId, subject: subjectName, faculty: facultyName, venue, color: selectedColor };
 
-    // Check if this slot already has a subject entry; update it
     const existingIndex = subjects.findIndex(s => s.slot === slotId);
-    const entry = {
-        slot: slotId,
-        subject: subjectName,
-        faculty: facultyName,
-        venue: venue,
-        color: selectedColor
-    };
-
     if (existingIndex >= 0) {
         subjects[existingIndex] = entry;
     } else {
         subjects.push(entry);
     }
 
-    // Update the timetable slot
+    // Apply to timetable slot — ONLY this slot gets the color
     activeFormSlot.textContent = subjectName;
     activeFormSlot.style.backgroundColor = selectedColor;
     activeFormSlot.style.color = getContrastColor(selectedColor);
     saveState();
 
-    // Clear form
-    subjectNameEl.value = '';
-    facultyNameEl.value = '';
-    venueEl.value = '';
+    // Clean up UI
     activeFormSlot.classList.remove('form-selected');
     activeFormSlot = null;
 
-    // Reset hint
-    const hint = document.querySelector('.slot-select-hint');
+    // Reset badge
+    const badge = document.getElementById('slotBadge');
+    const badgeVal = document.getElementById('slotBadgeValue');
+    if (badge) badge.classList.remove('has-slot');
+    if (badgeVal) badgeVal.textContent = '—';
+
+    // Disable button & reset hint
+    const addBtn = document.getElementById('addSubjectBtn');
+    if (addBtn) addBtn.disabled = true;
+
+    const hint = document.getElementById('slotHint');
     if (hint) {
         hint.classList.remove('active-slot');
-        hint.innerHTML = `<i class="fas fa-info-circle"></i> Click a slot on the timetable first, then fill in details and click Add Subject.`;
+        hint.innerHTML = `<i class="fas fa-mouse-pointer"></i> Click any slot on the timetable to select it first.`;
     }
+
+    // Clear form
+    document.getElementById('subjectName').value = '';
+    document.getElementById('facultyName').value = '';
+    document.getElementById('venueInput').value  = '';
+    document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
 
     saveSubjectsToLocalStorage();
     renderSubjectsTable();
@@ -745,45 +807,47 @@ function handleAddSubject() {
 function deleteSubject(index) {
     const sub = subjects[index];
     if (!sub) return;
+    if (!confirm(`Remove "${sub.subject}" from slot ${sub.slot}?`)) return;
 
-    if (confirm(`Remove "${sub.subject}" from slot ${sub.slot}?`)) {
-        // Clear the timetable slot
-        const slotEl = document.querySelector(`.slot[data-slot="${sub.slot}"]`);
-        if (slotEl) {
-            slotEl.textContent = '';
-            slotEl.style.backgroundColor = '#eaedf4';
-            slotEl.style.color = '#2c3e50';
-        }
-
-        subjects.splice(index, 1);
-        saveState();
-        saveSubjectsToLocalStorage();
-        renderSubjectsTable();
+    const slotEl = document.querySelector(`.slot[data-slot="${sub.slot}"]`);
+    if (slotEl) {
+        slotEl.textContent = '';
+        slotEl.style.backgroundColor = '#eaedf4';
+        slotEl.style.color = '#2c3e50';
     }
+    subjects.splice(index, 1);
+    saveState();
+    saveSubjectsToLocalStorage();
+    renderSubjectsTable();
 }
 
 function renderSubjectsTable() {
-    const tbody = document.getElementById('subjectsTableBody');
-    const noMsg = document.getElementById('noSubjectsMsg');
+    const tbody  = document.getElementById('subjectsTableBody');
+    const noMsg  = document.getElementById('noSubjectsMsg');
+    const countEl = document.getElementById('subjectsCount');
     if (!tbody) return;
 
     tbody.innerHTML = '';
+
+    if (countEl) countEl.textContent = `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}`;
 
     if (subjects.length === 0) {
         if (noMsg) noMsg.style.display = 'block';
         return;
     }
-
     if (noMsg) noMsg.style.display = 'none';
 
     subjects.forEach((sub, i) => {
         const tr = document.createElement('tr');
+        const venueBadge = sub.venue
+            ? `<span class="venue-tag">${sub.venue}</span>`
+            : `<span style="color:#b0bec5;">—</span>`;
         tr.innerHTML = `
             <td>${i + 1}</td>
-            <td><strong>${sub.slot}</strong></td>
-            <td>${sub.faculty || '—'}</td>
-            <td>${sub.subject}</td>
-            <td>${sub.venue || '—'}</td>
+            <td><span class="slot-tag">${sub.slot}</span></td>
+            <td class="subject-name-cell">${sub.subject}</td>
+            <td>${sub.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
+            <td>${venueBadge}</td>
             <td><span class="color-dot" style="background:${sub.color};" title="${sub.color}"></span></td>
             <td>
                 <button class="table-delete-btn" onclick="deleteSubject(${i})">
