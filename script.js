@@ -428,19 +428,20 @@ function renderSubjectsTable() {
 
     groups.forEach((grp, i) => {
         const tr = document.createElement('tr');
-        const venueBadge = grp.venue ? `<span class="venue-tag">${grp.venue}</span>` : `<span style="color:#b0bec5;">—</span>`;
-        // Build slot tags — all on one line joined with +
+        // Slots + venue inline: B11+B12+B13 (AB2)
         const slotTags = grp.slots
             .map(s => `<span class="slot-tag">${s}</span>`)
             .join('<span class="slot-joiner">+</span>');
+        const venueInline = grp.venue
+            ? `<span class="slot-venue-inline">(${grp.venue})</span>`
+            : '';
         // Safe key for delete
         const deleteKey = (grp.subject + '||COLOR||' + grp.color).replace(/"/g, '&quot;');
         tr.innerHTML = `
             <td>${i+1}</td>
-            <td class="slot-group-cell">${slotTags}</td>
+            <td class="slot-group-cell">${slotTags}${venueInline}</td>
             <td class="subject-name-cell">${grp.subject}</td>
             <td>${grp.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
-            <td>${venueBadge}</td>
             <td><span class="color-dot" style="background:${grp.color};" title="${grp.color}"></span></td>
             <td><button class="table-delete-btn" onclick="deleteSubjectGroup('${deleteKey}')"><i class="fas fa-trash"></i> Remove</button></td>`;
         tbody.appendChild(tr);
@@ -508,11 +509,12 @@ function clearSearch() { searchInput.value = ''; slots.forEach(s => s.classList.
 // TOOL ACTIONS
 // ─────────────────────────────────────────────────────────────
 function createNew() {
-    if (confirm('Create a new timetable? Current data will be saved to history.')) {
+    if (confirm('Create a new timetable? The timetable grid will be cleared but your subject list will be kept.')) {
         saveState();
         slots.forEach(s => clearSlotVisual(s));
         ctrlSelectedSlots.clear(); clearPendingGroup(); clearSearch();
-        subjects = []; saveSubjectsToLocalStorage(); renderSubjectsTable(); saveToLocalStorage();
+        // Do NOT clear subjects — keep the list so user can re-apply them
+        saveToLocalStorage();
     }
 }
 function deleteSelected() {
