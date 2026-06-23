@@ -155,8 +155,11 @@ body {
 .color-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 15px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .color-option {
@@ -1067,6 +1070,19 @@ body {
     border-radius: 20px;
     letter-spacing: 0.5px;
     font-family: monospace;
+}
+
+.slot-group-cell {
+    white-space: nowrap;
+}
+
+.slot-joiner {
+    display: inline-block;
+    color: #b0bec5;
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    vertical-align: middle;
 }
 
 .venue-tag {

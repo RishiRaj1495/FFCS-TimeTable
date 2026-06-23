@@ -374,19 +374,39 @@ function updateColorPreview() {
 // ─────────────────────────────────────────────────────────────
 // SUBJECTS TABLE
 // ─────────────────────────────────────────────────────────────
-function deleteSubject(index) {
-    const sub = subjects[index];
-    if (!sub) return;
-    if (!confirm(`Remove "${sub.subject}" from slot ${sub.slot}?`)) return;
-
-    // Remove all slots sharing this subject's colour+name combo
-    subjects.forEach(s => {
-        if (s.subject === sub.subject && s.color === sub.color) {
-            const slotEl = document.querySelector(`.slot[data-slot="${s.slot}"]`);
-            if (slotEl) clearSlotVisual(slotEl);
-        }
+// Group subjects by (subject name + color) → merge slots into one row
+function getGroupedSubjects() {
+    const groups = [];
+    const seen   = new Set();
+    subjects.forEach((sub, i) => {
+        const key = sub.subject + '||' + sub.color;
+        if (seen.has(key)) return;
+        seen.add(key);
+        // Collect all entries with the same subject+color
+        const members = subjects
+            .map((s, idx) => ({ ...s, _idx: idx }))
+            .filter(s => s.subject === sub.subject && s.color === sub.color);
+        groups.push({
+            subject: sub.subject,
+            faculty: sub.faculty,
+            venue:   sub.venue,
+            color:   sub.color,
+            slots:   members.map(m => m.slot),
+            indices: members.map(m => m._idx)
+        });
     });
-    subjects.splice(index, 1);
+    return groups;
+}
+
+function deleteSubjectGroup(groupKey) {
+    // groupKey = "subjectName||color"
+    const [subjectName, color] = groupKey.split('||COLOR||');
+    const toRemove = subjects.filter(s => s.subject === subjectName && s.color === color);
+    toRemove.forEach(s => {
+        const slotEl = document.querySelector(`.slot[data-slot="${s.slot}"]`);
+        if (slotEl) clearSlotVisual(slotEl);
+    });
+    subjects = subjects.filter(s => !(s.subject === subjectName && s.color === color));
     saveState();
     saveSubjectsToLocalStorage();
     renderSubjectsTable();
@@ -398,20 +418,31 @@ function renderSubjectsTable() {
     const countEl = document.getElementById('subjectsCount');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (countEl) countEl.textContent = `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}`;
-    if (subjects.length === 0) { if (noMsg) noMsg.style.display = 'block'; return; }
+
+    const groups = getGroupedSubjects();
+    const uniqueCount = groups.length;
+    if (countEl) countEl.textContent = `${uniqueCount} subject${uniqueCount !== 1 ? 's' : ''}`;
+
+    if (groups.length === 0) { if (noMsg) noMsg.style.display = 'block'; return; }
     if (noMsg) noMsg.style.display = 'none';
-    subjects.forEach((sub, i) => {
+
+    groups.forEach((grp, i) => {
         const tr = document.createElement('tr');
-        const venueBadge = sub.venue ? `<span class="venue-tag">${sub.venue}</span>` : `<span style="color:#b0bec5;">—</span>`;
+        const venueBadge = grp.venue ? `<span class="venue-tag">${grp.venue}</span>` : `<span style="color:#b0bec5;">—</span>`;
+        // Build slot tags — all on one line joined with +
+        const slotTags = grp.slots
+            .map(s => `<span class="slot-tag">${s}</span>`)
+            .join('<span class="slot-joiner">+</span>');
+        // Safe key for delete
+        const deleteKey = (grp.subject + '||COLOR||' + grp.color).replace(/"/g, '&quot;');
         tr.innerHTML = `
             <td>${i+1}</td>
-            <td><span class="slot-tag">${sub.slot}</span></td>
-            <td class="subject-name-cell">${sub.subject}</td>
-            <td>${sub.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
+            <td class="slot-group-cell">${slotTags}</td>
+            <td class="subject-name-cell">${grp.subject}</td>
+            <td>${grp.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
             <td>${venueBadge}</td>
-            <td><span class="color-dot" style="background:${sub.color};" title="${sub.color}"></span></td>
-            <td><button class="table-delete-btn" onclick="deleteSubject(${i})"><i class="fas fa-trash"></i> Remove</button></td>`;
+            <td><span class="color-dot" style="background:${grp.color};" title="${grp.color}"></span></td>
+            <td><button class="table-delete-btn" onclick="deleteSubjectGroup('${deleteKey}')"><i class="fas fa-trash"></i> Remove</button></td>`;
         tbody.appendChild(tr);
     });
 }
