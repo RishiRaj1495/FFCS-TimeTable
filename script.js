@@ -1,22 +1,27 @@
-// Global Variables
+// ─────────────────────────────────────────────────────────────
+// GLOBALS
+// ─────────────────────────────────────────────────────────────
 let selectedColor = '#caf0f8';
-let history = [];
-let historyIndex = -1;
-let selectedSlots = new Set(); // Ctrl+click multi-select for delete
+let history       = [];
+let historyIndex  = -1;
+let ctrlSelectedSlots = new Set(); // Ctrl+click → bulk delete
 
-// Subject Management
+// Subject management
 let subjects = [];
-let activeFormSlot = null;      // single slot (plain click)
-let activeFormSlots = [];       // all slots in the same-color group
 
-// DOM Elements
-const slots = document.querySelectorAll('.slot');
-const colorOptions = document.querySelectorAll('.color-option');
-const colorPalette = document.getElementById('colorPalette');
-const searchInput = document.getElementById('searchSlot');
+// NEW: colour-group selection mode
+// When user is in "selection mode", every plain click TOGGLES a slot into/out of
+// the pending group (shown in the selected colour). Clicking "Add Subject" commits.
+let pendingGroup = new Set(); // Set of slot elements waiting to be assigned
+
+// DOM
+const slots          = document.querySelectorAll('.slot');
+const colorOptions   = document.querySelectorAll('.color-option');
+const colorPalette   = document.getElementById('colorPalette');
+const searchInput    = document.getElementById('searchSlot');
 const clearSearchBtn = document.getElementById('clearSearch');
 const customColorInput = document.getElementById('customColor');
-const applyCustomBtn = document.getElementById('applyCustom');
+const applyCustomBtn   = document.getElementById('applyCustom');
 
 const newBtn      = document.getElementById('newBtn');
 const deleteBtn   = document.getElementById('deleteBtn');
@@ -52,21 +57,15 @@ function init() {
 function setupMobileMenu() {
     if (mobileMenuToggle) mobileMenuToggle.addEventListener('click', openMobileMenu);
     if (mobileCloseBtn)   mobileCloseBtn.addEventListener('click', closeMobileMenu);
-
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
         if (window.innerWidth <= 768 &&
             sidebar.classList.contains('active') &&
             !sidebar.contains(e.target) &&
-            e.target !== mobileMenuToggle) {
-            closeMobileMenu();
-        }
+            e.target !== mobileMenuToggle) closeMobileMenu();
     });
-
-    document.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (window.innerWidth <= 768) closeMobileMenu();
-        });
-    });
+    document.querySelectorAll('.tool-btn').forEach(btn =>
+        btn.addEventListener('click', () => { if (window.innerWidth <= 768) closeMobileMenu(); })
+    );
 }
 function openMobileMenu()  { sidebar.classList.add('active');    document.body.style.overflow = 'hidden'; }
 function closeMobileMenu() { sidebar.classList.remove('active'); document.body.style.overflow = 'auto';   }
@@ -77,12 +76,17 @@ function closeMobileMenu() { sidebar.classList.remove('active'); document.body.s
 function setupEventListeners() {
     colorBtn.addEventListener('click', () => colorPalette.classList.toggle('active'));
 
-    colorOptions.forEach(option => {
-        option.addEventListener('click', function () {
+    colorOptions.forEach(opt => {
+        opt.addEventListener('click', function () {
             colorOptions.forEach(o => o.classList.remove('selected'));
             this.classList.add('selected');
             selectedColor = this.dataset.color;
             updateColorPreview();
+            // Re-preview pending group in new colour
+            pendingGroup.forEach(s => {
+                s.style.backgroundColor = selectedColor;
+                s.style.color           = getContrastColor(selectedColor);
+            });
         });
     });
 
@@ -90,38 +94,38 @@ function setupEventListeners() {
         selectedColor = customColorInput.value;
         colorOptions.forEach(o => o.classList.remove('selected'));
         updateColorPreview();
+        pendingGroup.forEach(s => {
+            s.style.backgroundColor = selectedColor;
+            s.style.color           = getContrastColor(selectedColor);
+        });
     });
 
-    // ── SLOT CLICK LOGIC ──────────────────────────────────────
+    // ── SLOT CLICKS ──────────────────────────────────────────
     slots.forEach(slot => {
         slot.addEventListener('click', function (e) {
-            // Remove highlight (search result) on click
             if (this.classList.contains('highlight')) {
                 this.classList.remove('highlight');
                 return;
             }
-
             if (e.ctrlKey || e.metaKey) {
-                // Ctrl+click → multi-select for bulk-delete
-                this.classList.toggle('selected');
-                if (this.classList.contains('selected')) {
-                    selectedSlots.add(this);
-                } else {
-                    selectedSlots.delete(this);
-                }
+                // Ctrl+click → bulk-delete multi-select (independent of pending group)
+                this.classList.toggle('ctrl-selected');
+                if (this.classList.contains('ctrl-selected')) ctrlSelectedSlots.add(this);
+                else ctrlSelectedSlots.delete(this);
             } else {
-                // Plain click → open subject form; also pick up same-color siblings
-                handleSlotFormClick(this);
+                // Plain click → toggle slot in/out of pending group
+                handleSlotToggle(this);
             }
         });
 
         slot.addEventListener('dblclick', function () {
+            // Double-click → clear slot
             clearSlotVisual(this);
+            pendingGroup.delete(this);
             saveState();
         });
 
         slot.addEventListener('blur', () => saveState());
-
         slot.addEventListener('touchend', function (e) {
             if (e.cancelable) e.preventDefault();
             this.focus();
@@ -140,136 +144,152 @@ function setupEventListeners() {
 
     closeModal.addEventListener('click', hideDownloadModal);
     downloadModal.addEventListener('click', e => { if (e.target === downloadModal) hideDownloadModal(); });
-
-    formatButtons.forEach(btn => {
-        btn.addEventListener('click', function () {
-            downloadTimetable(this.dataset.format);
-            hideDownloadModal();
-        });
-    });
+    formatButtons.forEach(btn => btn.addEventListener('click', function () {
+        downloadTimetable(this.dataset.format); hideDownloadModal();
+    }));
 
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('resize', handleResize);
 }
-
-function handleResize() {
-    if (window.innerWidth > 768) { closeMobileMenu(); document.body.style.overflow = 'auto'; }
-}
+function handleResize() { if (window.innerWidth > 768) { closeMobileMenu(); document.body.style.overflow='auto'; } }
 
 // ─────────────────────────────────────────────────────────────
-// SAME-COLOR GROUP DETECTION
+// PENDING-GROUP SELECTION MODEL
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Returns all slot elements that currently have the same background colour
- * as `anchorSlot`. Only coloured slots (not the default #eaedf4) are matched.
+ * Toggle a slot in/out of the pending group.
+ * - If it's already in the pending group → remove it (restore old look).
+ * - If it's already committed (has a subject) → clicking it selects ONLY that
+ *   subject's colour-group so you can edit all of them at once.
+ * - Otherwise → add it to the pending group, paint it the selected colour.
  */
-function getSameColorGroup(anchorSlot) {
-    const bg = anchorSlot.style.backgroundColor;
-    const DEFAULT = normalizeRgb('rgb(234, 237, 244)'); // #eaedf4
-    const anchor  = normalizeRgb(bg);
-
-    if (!anchor || anchor === DEFAULT) return [anchorSlot]; // uncoloured → just itself
-
-    const group = [];
-    slots.forEach(s => {
-        if (normalizeRgb(s.style.backgroundColor) === anchor) group.push(s);
-    });
-    return group.length ? group : [anchorSlot];
-}
-
-/** Normalise any rgb(…) / hex string to "r,g,b" for comparison */
-function normalizeRgb(color) {
-    if (!color) return null;
-    // Already rgb(...)
-    const m = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-    if (m) return `${m[1]},${m[2]},${m[3]}`;
-    // Hex
-    if (color.startsWith('#')) {
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.slice(0,2), 16);
-        const g = parseInt(hex.slice(2,4), 16);
-        const b = parseInt(hex.slice(4,6), 16);
-        return `${r},${g},${b}`;
+function handleSlotToggle(slot) {
+    // Case 1: slot is already in the current pending group → deselect it
+    if (pendingGroup.has(slot)) {
+        pendingGroup.delete(slot);
+        slot.classList.remove('form-selected');
+        // Restore to saved subject colour or default
+        const saved = subjects.find(s => s.slot === slot.dataset.slot);
+        if (saved) {
+            slot.style.backgroundColor = saved.color;
+            slot.style.color           = getContrastColor(saved.color);
+            slot.textContent           = saved.subject;
+        } else {
+            clearSlotVisual(slot);
+        }
+        refreshBadgeAndHint();
+        return;
     }
-    return color;
+
+    // Case 2: slot belongs to an already-committed subject → load that group for editing
+    const existing = subjects.find(s => s.slot === slot.dataset.slot);
+    if (existing && pendingGroup.size === 0) {
+        // Load all slots that share this subject's colour as the edit group
+        loadExistingGroup(existing.color, existing);
+        return;
+    }
+
+    // Case 3: add slot to pending group
+    pendingGroup.add(slot);
+    slot.style.backgroundColor = selectedColor;
+    slot.style.color           = getContrastColor(selectedColor);
+    slot.classList.add('form-selected');
+
+    refreshBadgeAndHint();
+    // Focus subject field
+    const subjEl = document.getElementById('subjectName');
+    if (subjEl && pendingGroup.size === 1) setTimeout(() => subjEl.focus(), 50);
 }
 
-// ─────────────────────────────────────────────────────────────
-// SUBJECT FORM – SLOT CLICK
-// ─────────────────────────────────────────────────────────────
-function handleSlotFormClick(slot) {
-    // Clear previous group highlights
-    clearFormGroupHighlights();
+/**
+ * When clicking an already-filled slot with an empty pending group,
+ * load all slots of that subject's colour into the pending group for re-editing.
+ */
+function loadExistingGroup(color, existingSubject) {
+    clearPendingGroup();
 
-    activeFormSlot  = slot;
-    activeFormSlots = getSameColorGroup(slot);   // ← all same-color slots
+    // Find every slot that currently shows this colour
+    slots.forEach(s => {
+        if (colorsMatch(s.style.backgroundColor, color)) {
+            pendingGroup.add(s);
+            s.classList.add('form-selected');
+        }
+    });
 
-    // Highlight the whole group
-    activeFormSlots.forEach(s => s.classList.add('form-selected'));
+    // Pre-fill the form
+    document.getElementById('subjectName').value = existingSubject.subject || '';
+    document.getElementById('facultyName').value = existingSubject.faculty || '';
+    document.getElementById('venueInput').value  = existingSubject.venue   || '';
+    document.querySelectorAll('.venue-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.venue === (existingSubject.venue || '').toUpperCase());
+    });
 
-    // Slot badge: show primary slot; if group > 1, show count
+    // Match the colour in the palette
+    selectedColor = color;
+    colorOptions.forEach(o => o.classList.toggle('selected', o.dataset.color === color));
+    updateColorPreview();
+
+    refreshBadgeAndHint();
+    document.getElementById('addSubjectBtn').disabled = false;
+    setTimeout(() => document.getElementById('subjectName').focus(), 50);
+}
+
+function clearPendingGroup() {
+    pendingGroup.forEach(s => {
+        s.classList.remove('form-selected');
+        const saved = subjects.find(sub => sub.slot === s.dataset.slot);
+        if (saved) {
+            s.style.backgroundColor = saved.color;
+            s.style.color           = getContrastColor(saved.color);
+            s.textContent           = saved.subject;
+        } else {
+            clearSlotVisual(s);
+        }
+    });
+    pendingGroup.clear();
+}
+
+function refreshBadgeAndHint() {
     const badge    = document.getElementById('slotBadge');
     const badgeVal = document.getElementById('slotBadgeValue');
+    const addBtn   = document.getElementById('addSubjectBtn');
+    const hint     = document.getElementById('slotHint');
+
+    if (pendingGroup.size === 0) {
+        if (badge)    badge.classList.remove('has-slot');
+        if (badgeVal) { badgeVal.textContent = '—'; badgeVal.style.fontSize = ''; }
+        if (addBtn)   addBtn.disabled = true;
+        if (hint) {
+            hint.classList.remove('active-slot');
+            hint.innerHTML = `<i class="fas fa-mouse-pointer"></i> Click slots to select them, then fill in details and hit Add Subject.`;
+        }
+        return;
+    }
+
+    const names = Array.from(pendingGroup).map(s => s.dataset.slot);
     if (badge)    badge.classList.add('has-slot');
     if (badgeVal) {
-        if (activeFormSlots.length > 1) {
-            const slotNames = activeFormSlots.map(s => s.dataset.slot).join(', ');
-            badgeVal.textContent = slotNames;
-            badgeVal.style.fontSize = activeFormSlots.length > 3 ? '0.85rem' : '1.1rem';
-        } else {
-            badgeVal.textContent  = slot.dataset.slot;
-            badgeVal.style.fontSize = '';
-        }
+        badgeVal.textContent  = names.join(' + ');
+        badgeVal.style.fontSize = names.length > 3 ? '0.78rem' : names.length > 1 ? '1rem' : '';
     }
-
-    const addBtn = document.getElementById('addSubjectBtn');
-    if (addBtn) addBtn.disabled = false;
-
-    const hint = document.getElementById('slotHint');
+    if (addBtn)   addBtn.disabled = false;
     if (hint) {
         hint.classList.add('active-slot');
-        if (activeFormSlots.length > 1) {
-            const names = activeFormSlots.map(s => s.dataset.slot).join(' + ');
-            hint.innerHTML = `<i class="fas fa-layer-group"></i>&nbsp;Group selected: <strong>${names}</strong> — same colour, fill once!`;
+        if (names.length > 1) {
+            hint.innerHTML = `<i class="fas fa-layer-group"></i>&nbsp;<strong>${names.length} slots</strong> selected (${names.join(', ')}) — fill once &amp; hit Add.`;
         } else {
-            hint.innerHTML = `<i class="fas fa-check-circle"></i>&nbsp;Slot <strong>${slot.dataset.slot}</strong> selected — fill in details above.`;
+            hint.innerHTML = `<i class="fas fa-check-circle"></i>&nbsp;Slot <strong>${names[0]}</strong> selected — fill in details above.`;
         }
     }
-
-    // Clear form
-    document.getElementById('subjectName').value = '';
-    document.getElementById('facultyName').value = '';
-    document.getElementById('venueInput').value  = '';
-    document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
-
-    // Pre-fill from existing subject (use anchor slot's data)
-    const existing = subjects.find(s => s.slot === slot.dataset.slot);
-    if (existing) {
-        document.getElementById('subjectName').value = existing.subject || '';
-        document.getElementById('facultyName').value = existing.faculty || '';
-        document.getElementById('venueInput').value  = existing.venue   || '';
-        document.querySelectorAll('.venue-btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.venue === (existing.venue || '').toUpperCase());
-        });
-    }
-
-    setTimeout(() => document.getElementById('subjectName').focus(), 50);
-    updateColorPreview();
-}
-
-function clearFormGroupHighlights() {
-    slots.forEach(s => s.classList.remove('form-selected'));
-    activeFormSlot  = null;
-    activeFormSlots = [];
 }
 
 // ─────────────────────────────────────────────────────────────
-// ADD SUBJECT – applies to entire colour group
+// ADD SUBJECT (commits pending group)
 // ─────────────────────────────────────────────────────────────
 function handleAddSubject() {
-    if (!activeFormSlot) {
-        alert('Please click a slot on the timetable first.');
+    if (pendingGroup.size === 0) {
+        alert('Please click slots on the timetable first.');
         return;
     }
 
@@ -283,38 +303,24 @@ function handleAddSubject() {
         return;
     }
 
-    // Apply to ALL slots in the group
-    activeFormSlots.forEach(slotEl => {
+    pendingGroup.forEach(slotEl => {
         const slotId = slotEl.dataset.slot;
         const entry  = { slot: slotId, subject: subjectName, faculty: facultyName, venue, color: selectedColor };
+        const idx    = subjects.findIndex(s => s.slot === slotId);
+        if (idx >= 0) subjects[idx] = entry; else subjects.push(entry);
 
-        const existingIndex = subjects.findIndex(s => s.slot === slotId);
-        if (existingIndex >= 0) subjects[existingIndex] = entry;
-        else subjects.push(entry);
-
-        slotEl.textContent            = subjectName;
-        slotEl.style.backgroundColor  = selectedColor;
-        slotEl.style.color            = getContrastColor(selectedColor);
+        // Commit visual
+        slotEl.textContent           = subjectName;
+        slotEl.style.backgroundColor = selectedColor;
+        slotEl.style.color           = getContrastColor(selectedColor);
+        slotEl.classList.remove('form-selected');
     });
 
+    pendingGroup.clear();
     saveState();
-    clearFormGroupHighlights();
+    refreshBadgeAndHint();
 
-    // Reset badge
-    const badge    = document.getElementById('slotBadge');
-    const badgeVal = document.getElementById('slotBadgeValue');
-    if (badge)    badge.classList.remove('has-slot');
-    if (badgeVal) { badgeVal.textContent = '—'; badgeVal.style.fontSize = ''; }
-
-    const addBtn = document.getElementById('addSubjectBtn');
-    if (addBtn) addBtn.disabled = true;
-
-    const hint = document.getElementById('slotHint');
-    if (hint) {
-        hint.classList.remove('active-slot');
-        hint.innerHTML = `<i class="fas fa-mouse-pointer"></i> Click any slot on the timetable to select it first.`;
-    }
-
+    // Clear form
     document.getElementById('subjectName').value = '';
     document.getElementById('facultyName').value = '';
     document.getElementById('venueInput').value  = '';
@@ -331,7 +337,7 @@ function setupSubjectForm() {
     const addBtn = document.getElementById('addSubjectBtn');
     if (addBtn) addBtn.addEventListener('click', handleAddSubject);
 
-    ['subjectName', 'facultyName', 'venueInput'].forEach(id => {
+    ['subjectName','facultyName','venueInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') handleAddSubject(); });
     });
@@ -340,12 +346,8 @@ function setupSubjectForm() {
         btn.addEventListener('click', function () {
             const wasActive = this.classList.contains('active');
             document.querySelectorAll('.venue-btn').forEach(b => b.classList.remove('active'));
-            if (!wasActive) {
-                this.classList.add('active');
-                document.getElementById('venueInput').value = this.dataset.venue;
-            } else {
-                document.getElementById('venueInput').value = '';
-            }
+            if (!wasActive) { this.classList.add('active'); document.getElementById('venueInput').value = this.dataset.venue; }
+            else document.getElementById('venueInput').value = '';
         });
     });
 
@@ -353,18 +355,13 @@ function setupSubjectForm() {
     if (venueInput) {
         venueInput.addEventListener('input', function () {
             const val = this.value.trim().toUpperCase();
-            document.querySelectorAll('.venue-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.venue === val);
-            });
+            document.querySelectorAll('.venue-btn').forEach(b => b.classList.toggle('active', b.dataset.venue === val));
         });
     }
 
     updateColorPreview();
-
     const savedSubjects = localStorage.getItem('subjectsData');
-    if (savedSubjects) {
-        try { subjects = JSON.parse(savedSubjects); } catch(e) { subjects = []; }
-    }
+    if (savedSubjects) { try { subjects = JSON.parse(savedSubjects); } catch(e) { subjects = []; } }
 }
 
 function updateColorPreview() {
@@ -382,9 +379,13 @@ function deleteSubject(index) {
     if (!sub) return;
     if (!confirm(`Remove "${sub.subject}" from slot ${sub.slot}?`)) return;
 
-    const slotEl = document.querySelector(`.slot[data-slot="${sub.slot}"]`);
-    if (slotEl) clearSlotVisual(slotEl);
-
+    // Remove all slots sharing this subject's colour+name combo
+    subjects.forEach(s => {
+        if (s.subject === sub.subject && s.color === sub.color) {
+            const slotEl = document.querySelector(`.slot[data-slot="${s.slot}"]`);
+            if (slotEl) clearSlotVisual(slotEl);
+        }
+    });
     subjects.splice(index, 1);
     saveState();
     saveSubjectsToLocalStorage();
@@ -396,41 +397,26 @@ function renderSubjectsTable() {
     const noMsg   = document.getElementById('noSubjectsMsg');
     const countEl = document.getElementById('subjectsCount');
     if (!tbody) return;
-
     tbody.innerHTML = '';
     if (countEl) countEl.textContent = `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}`;
-
-    if (subjects.length === 0) {
-        if (noMsg) noMsg.style.display = 'block';
-        return;
-    }
+    if (subjects.length === 0) { if (noMsg) noMsg.style.display = 'block'; return; }
     if (noMsg) noMsg.style.display = 'none';
-
     subjects.forEach((sub, i) => {
         const tr = document.createElement('tr');
-        const venueBadge = sub.venue
-            ? `<span class="venue-tag">${sub.venue}</span>`
-            : `<span style="color:#b0bec5;">—</span>`;
+        const venueBadge = sub.venue ? `<span class="venue-tag">${sub.venue}</span>` : `<span style="color:#b0bec5;">—</span>`;
         tr.innerHTML = `
-            <td>${i + 1}</td>
+            <td>${i+1}</td>
             <td><span class="slot-tag">${sub.slot}</span></td>
             <td class="subject-name-cell">${sub.subject}</td>
             <td>${sub.faculty || '<span style="color:#b0bec5;">—</span>'}</td>
             <td>${venueBadge}</td>
             <td><span class="color-dot" style="background:${sub.color};" title="${sub.color}"></span></td>
-            <td>
-                <button class="table-delete-btn" onclick="deleteSubject(${i})">
-                    <i class="fas fa-trash"></i> Remove
-                </button>
-            </td>
-        `;
+            <td><button class="table-delete-btn" onclick="deleteSubject(${i})"><i class="fas fa-trash"></i> Remove</button></td>`;
         tbody.appendChild(tr);
     });
 }
 
-function saveSubjectsToLocalStorage() {
-    localStorage.setItem('subjectsData', JSON.stringify(subjects));
-}
+function saveSubjectsToLocalStorage() { localStorage.setItem('subjectsData', JSON.stringify(subjects)); }
 
 // ─────────────────────────────────────────────────────────────
 // UTILITIES
@@ -439,22 +425,35 @@ function clearSlotVisual(slotEl) {
     slotEl.style.backgroundColor = '#eaedf4';
     slotEl.style.color           = '#2c3e50';
     slotEl.textContent           = '';
-    slotEl.classList.remove('highlight', 'selected', 'form-selected');
+    slotEl.classList.remove('highlight','ctrl-selected','form-selected');
 }
 
-function getContrastColor(hexColor) {
-    // Handle rgb() strings too
+function getContrastColor(color) {
     let r, g, b;
-    if (hexColor.startsWith('#')) {
-        r = parseInt(hexColor.slice(1,3), 16);
-        g = parseInt(hexColor.slice(3,5), 16);
-        b = parseInt(hexColor.slice(5,7), 16);
+    if (!color) return '#000000';
+    if (color.startsWith('#')) {
+        r = parseInt(color.slice(1,3),16); g = parseInt(color.slice(3,5),16); b = parseInt(color.slice(5,7),16);
     } else {
-        const m = hexColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        const m = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
         if (!m) return '#000000';
-        [, r, g, b] = m.map(Number);
+        r=+m[1]; g=+m[2]; b=+m[3];
     }
-    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.5 ? '#000000' : '#ffffff';
+    return (0.299*r + 0.587*g + 0.114*b)/255 > 0.5 ? '#000000' : '#ffffff';
+}
+
+function colorsMatch(cssColor, hexOrCss) {
+    return normalizeToRgb(cssColor) === normalizeToRgb(hexOrCss);
+}
+
+function normalizeToRgb(c) {
+    if (!c) return '';
+    const m = c.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (m) return `${m[1]},${m[2]},${m[3]}`;
+    if (c.startsWith('#')) {
+        const h = c.replace('#','');
+        return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+    }
+    return c;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -462,21 +461,17 @@ function getContrastColor(hexColor) {
 // ─────────────────────────────────────────────────────────────
 function handleSearch(e) {
     const term = e.target.value.toUpperCase().trim();
-    slots.forEach(slot => {
-        slot.classList.remove('highlight');
-        if (term && (slot.dataset.slot.toUpperCase().includes(term) ||
-                     slot.textContent.toUpperCase().includes(term))) {
-            slot.classList.add('highlight');
+    let first = null;
+    slots.forEach(s => {
+        s.classList.remove('highlight');
+        if (term && (s.dataset.slot.toUpperCase().includes(term) || s.textContent.toUpperCase().includes(term))) {
+            s.classList.add('highlight');
+            if (!first) first = s;
         }
     });
-    const first = document.querySelector('.slot.highlight');
-    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
 }
-
-function clearSearch() {
-    searchInput.value = '';
-    slots.forEach(s => s.classList.remove('highlight'));
-}
+function clearSearch() { searchInput.value = ''; slots.forEach(s => s.classList.remove('highlight')); }
 
 // ─────────────────────────────────────────────────────────────
 // TOOL ACTIONS
@@ -485,35 +480,22 @@ function createNew() {
     if (confirm('Create a new timetable? Current data will be saved to history.')) {
         saveState();
         slots.forEach(s => clearSlotVisual(s));
-        selectedSlots.clear();
-        clearSearch();
-        subjects = [];
-        saveSubjectsToLocalStorage();
-        renderSubjectsTable();
-        saveToLocalStorage();
+        ctrlSelectedSlots.clear(); clearPendingGroup(); clearSearch();
+        subjects = []; saveSubjectsToLocalStorage(); renderSubjectsTable(); saveToLocalStorage();
     }
 }
-
 function deleteSelected() {
-    if (selectedSlots.size === 0) {
-        alert('Please select slots to delete (hold Ctrl/Cmd and click)');
-        return;
-    }
+    if (ctrlSelectedSlots.size === 0) { alert('Hold Ctrl/Cmd and click slots to select them for deletion.'); return; }
     saveState();
-    selectedSlots.forEach(slot => clearSlotVisual(slot));
-    selectedSlots.clear();
-    saveToLocalStorage();
+    ctrlSelectedSlots.forEach(s => clearSlotVisual(s));
+    ctrlSelectedSlots.clear(); saveToLocalStorage();
 }
-
 function reset() {
     if (confirm('Reset the entire timetable? This will clear all data.')) {
         saveState();
         slots.forEach(s => clearSlotVisual(s));
-        selectedSlots.clear();
-        clearSearch();
-        subjects = [];
-        saveSubjectsToLocalStorage();
-        renderSubjectsTable();
+        ctrlSelectedSlots.clear(); clearPendingGroup(); clearSearch();
+        subjects = []; saveSubjectsToLocalStorage(); renderSubjectsTable();
         localStorage.removeItem('timetableData');
     }
 }
@@ -522,186 +504,127 @@ function reset() {
 // HISTORY
 // ─────────────────────────────────────────────────────────────
 function saveState() {
-    const state = {
-        slots: Array.from(slots).map(s => ({
-            content: s.textContent,
-            bgColor: s.style.backgroundColor,
-            color:   s.style.color
-        }))
-    };
-    history = history.slice(0, historyIndex + 1);
-    history.push(state);
-    historyIndex++;
+    const state = { slots: Array.from(slots).map(s => ({ content: s.textContent, bgColor: s.style.backgroundColor, color: s.style.color })) };
+    history = history.slice(0, historyIndex+1);
+    history.push(state); historyIndex++;
     if (history.length > 50) { history.shift(); historyIndex--; }
     saveToLocalStorage();
 }
-
-function undo() {
-    if (historyIndex > 0) { historyIndex--; restoreState(history[historyIndex]); }
-    else alert('Nothing to undo');
-}
-
-function redo() {
-    if (historyIndex < history.length - 1) { historyIndex++; restoreState(history[historyIndex]); }
-    else alert('Nothing to redo');
-}
-
+function undo() { if (historyIndex > 0) { historyIndex--; restoreState(history[historyIndex]); } else alert('Nothing to undo'); }
+function redo() { if (historyIndex < history.length-1) { historyIndex++; restoreState(history[historyIndex]); } else alert('Nothing to redo'); }
 function restoreState(state) {
-    state.slots.forEach((d, i) => {
-        slots[i].textContent            = d.content;
-        slots[i].style.backgroundColor = d.bgColor || '#eaedf4';
-        slots[i].style.color           = d.color   || '#2c3e50';
-    });
+    state.slots.forEach((d,i) => { slots[i].textContent=d.content; slots[i].style.backgroundColor=d.bgColor||'#eaedf4'; slots[i].style.color=d.color||'#2c3e50'; });
 }
 
 // ─────────────────────────────────────────────────────────────
 // LOCAL STORAGE
 // ─────────────────────────────────────────────────────────────
 function saveToLocalStorage() {
-    const data = {
-        slots: Array.from(slots).map(s => ({
-            content: s.textContent,
-            bgColor: s.style.backgroundColor,
-            color:   s.style.color
-        })),
+    localStorage.setItem('timetableData', JSON.stringify({
+        slots: Array.from(slots).map(s => ({ content: s.textContent, bgColor: s.style.backgroundColor, color: s.style.color })),
         timestamp: new Date().toISOString()
-    };
-    localStorage.setItem('timetableData', JSON.stringify(data));
+    }));
 }
-
 function loadFromLocalStorage() {
     const saved = localStorage.getItem('timetableData');
     if (!saved) return;
     try {
         const data = JSON.parse(saved);
-        data.slots.forEach((d, i) => {
+        data.slots.forEach((d,i) => {
             if (!slots[i]) return;
-            slots[i].textContent            = d.content || '';
-            slots[i].style.backgroundColor = d.bgColor || '#eaedf4';
-            slots[i].style.color           = d.color   || '#2c3e50';
+            slots[i].textContent=d.content||''; slots[i].style.backgroundColor=d.bgColor||'#eaedf4'; slots[i].style.color=d.color||'#2c3e50';
         });
-    } catch (err) { console.error('Error loading timetable:', err); }
+    } catch(e) { console.error('Load error:',e); }
 }
 
 // ─────────────────────────────────────────────────────────────
 // DOWNLOAD
 // ─────────────────────────────────────────────────────────────
-function showDownloadModal() { downloadModal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
-function hideDownloadModal() { downloadModal.style.display = 'none'; document.body.style.overflow = 'auto';   }
+function showDownloadModal() { downloadModal.style.display='flex'; document.body.style.overflow='hidden'; }
+function hideDownloadModal() { downloadModal.style.display='none'; document.body.style.overflow='auto';   }
 
 async function downloadTimetable(format) {
-    const filename = `FFCS_Timetable_${new Date().toISOString().split('T')[0]}`;
+    const fn = `FFCS_Timetable_${new Date().toISOString().split('T')[0]}`;
     try {
-        switch(format) {
-            case 'html': downloadAsHTML(filename); break;
-            case 'png':  await downloadAsImage(filename, 'png');   break;
-            case 'jpg':  await downloadAsImage(filename, 'jpeg');  break;
-            case 'pdf':  await downloadAsPDF(filename);            break;
-        }
-    } catch (err) {
-        console.error('Download error:', err);
-        alert('Download failed. Please try again.');
-    }
+        if (format==='html') downloadAsHTML(fn);
+        else if (format==='pdf') await downloadAsPDF(fn);
+        else await downloadAsImage(fn, format==='jpg'?'jpeg':'png');
+    } catch(e) { console.error(e); alert('Download failed.'); }
 }
 
 function downloadAsHTML(filename) {
-    const table = document.getElementById('timetable');
-    const clone = table.cloneNode(true);
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>My Timetable - FFCS</title>
-<style>
-body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;background:#acb9d3;display:flex;justify-content:center;align-items:center;min-height:100vh}
+    const clone = document.getElementById('timetable').cloneNode(true);
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>FFCS Timetable</title>
+<style>body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;background:#acb9d3;display:flex;justify-content:center;min-height:100vh}
 .wrapper{background:white;padding:30px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.1)}
 h1{text-align:center;color:#5670a5;margin-bottom:20px}
-table{border-collapse:collapse;width:100%}
-th,td{border:2px solid #ddd;padding:10px;text-align:center}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th,td{border:2px solid #ddd;padding:8px 4px;text-align:center;font-size:.8rem;word-break:break-word}
 th{background:#5670a5;color:white;font-weight:600}
 .lunch-column{background:#6e84b2!important;color:white}
 .day-column{background:#5670a5!important;color:white!important}
-.slot{background:#eaedf4;min-width:70px;min-height:45px}
-.footer{text-align:center;margin-top:20px;color:#5670a5;font-size:14px}
-</style></head>
-<body><div class="wrapper"><h1>FFCS Timetable</h1>${clone.outerHTML}
-<div class="footer"><p><strong>Generated by FFCS Timetable Builder</strong></p><p>Designed by Rishi Raj</p><p>Date: ${new Date().toLocaleDateString()}</p></div>
+.slot{background:#eaedf4;min-height:45px}
+.footer{text-align:center;margin-top:20px;color:#5670a5;font-size:13px}
+</style></head><body><div class="wrapper"><h1>FFCS Timetable</h1>${clone.outerHTML}
+<div class="footer"><strong>Generated by FFCS Timetable Builder</strong> — Designed by Rishi Raj — ${new Date().toLocaleDateString()}</div>
 </div></body></html>`;
-    const blob = new Blob([html], {type:'text/html'});
     const link = document.createElement('a');
-    link.download = `${filename}.html`;
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    URL.revokeObjectURL(link.href);
-    alert('Timetable downloaded as HTML successfully!');
+    link.download = filename+'.html';
+    link.href = URL.createObjectURL(new Blob([html],{type:'text/html'}));
+    link.click(); URL.revokeObjectURL(link.href);
+    alert('Downloaded as HTML!');
 }
 
 async function downloadAsImage(filename, format) {
-    const element = document.getElementById('timetableCapture');
-    const highlighted = document.querySelectorAll('.slot.highlight');
-    highlighted.forEach(s => s.classList.add('temp-no-highlight'));
-    const canvas = await html2canvas(element, {scale:2, backgroundColor:'#ffffff', logging:false, useCORS:true});
-    highlighted.forEach(s => s.classList.remove('temp-no-highlight'));
+    const el  = document.getElementById('timetableCapture');
+    const hl  = document.querySelectorAll('.slot.highlight');
+    hl.forEach(s => s.classList.add('temp-no-highlight'));
+    const canvas = await html2canvas(el,{scale:2,backgroundColor:'#fff',logging:false,useCORS:true});
+    hl.forEach(s => s.classList.remove('temp-no-highlight'));
     canvas.toBlob(blob => {
         const link = document.createElement('a');
-        link.download = `${filename}.${format === 'jpeg' ? 'jpg' : 'png'}`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-        URL.revokeObjectURL(link.href);
-        alert(`Timetable downloaded as ${format.toUpperCase()} successfully!`);
+        link.download = `${filename}.${format==='jpeg'?'jpg':'png'}`;
+        link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href);
+        alert(`Downloaded as ${format.toUpperCase()}!`);
     }, `image/${format}`, 0.95);
 }
 
 async function downloadAsPDF(filename) {
-    const element = document.getElementById('timetableCapture');
-    const highlighted = document.querySelectorAll('.slot.highlight');
-    highlighted.forEach(s => s.classList.add('temp-no-highlight'));
-    const canvas = await html2canvas(element, {scale:2, backgroundColor:'#ffffff', logging:false, useCORS:true});
-    highlighted.forEach(s => s.classList.remove('temp-no-highlight'));
-    const imgData = canvas.toDataURL('image/png');
+    const el = document.getElementById('timetableCapture');
+    const hl = document.querySelectorAll('.slot.highlight');
+    hl.forEach(s => s.classList.add('temp-no-highlight'));
+    const canvas = await html2canvas(el,{scale:2,backgroundColor:'#fff',logging:false,useCORS:true});
+    hl.forEach(s => s.classList.remove('temp-no-highlight'));
     const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
-    const imgWidth = 280;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-    pdf.save(`${filename}.pdf`);
-    alert('Timetable downloaded as PDF successfully!');
+    const pdf = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const w=280, h=(canvas.height*w)/canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',10,10,w,h);
+    pdf.save(filename+'.pdf'); alert('Downloaded as PDF!');
 }
 
 // ─────────────────────────────────────────────────────────────
 // KEYBOARD SHORTCUTS
 // ─────────────────────────────────────────────────────────────
 function handleKeyboardShortcuts(e) {
-    if (e.ctrlKey || e.metaKey) {
+    if (e.ctrlKey||e.metaKey) {
         switch(e.key.toLowerCase()) {
-            case 'z': e.preventDefault(); e.shiftKey ? redo() : undo(); break;
-            case 'y': e.preventDefault(); redo();        break;
-            case 'n': e.preventDefault(); createNew();   break;
+            case 'z': e.preventDefault(); e.shiftKey?redo():undo(); break;
+            case 'y': e.preventDefault(); redo(); break;
+            case 'n': e.preventDefault(); createNew(); break;
             case 'd': e.preventDefault(); deleteSelected(); break;
             case 'f': e.preventDefault(); searchInput.focus(); break;
-            case 's': e.preventDefault(); saveToLocalStorage(); alert('Timetable saved!'); break;
+            case 's': e.preventDefault(); saveToLocalStorage(); alert('Saved!'); break;
         }
     }
-    if (e.key === 'Delete' && selectedSlots.size > 0) deleteSelected();
-    if (e.key === 'Escape') {
-        if (downloadModal.style.display === 'flex') hideDownloadModal();
-        if (window.innerWidth <= 768 && sidebar.classList.contains('active')) closeMobileMenu();
-        clearFormGroupHighlights();
-        // Reset badge & hint
-        const badge = document.getElementById('slotBadge');
-        const badgeVal = document.getElementById('slotBadgeValue');
-        if (badge)    badge.classList.remove('has-slot');
-        if (badgeVal) badgeVal.textContent = '—';
-        const addBtn = document.getElementById('addSubjectBtn');
-        if (addBtn) addBtn.disabled = true;
-        const hint = document.getElementById('slotHint');
-        if (hint) {
-            hint.classList.remove('active-slot');
-            hint.innerHTML = `<i class="fas fa-mouse-pointer"></i> Click any slot on the timetable to select it first.`;
-        }
+    if (e.key==='Delete' && ctrlSelectedSlots.size>0) deleteSelected();
+    if (e.key==='Escape') {
+        if (downloadModal.style.display==='flex') hideDownloadModal();
+        if (window.innerWidth<=768 && sidebar.classList.contains('active')) closeMobileMenu();
+        clearPendingGroup(); refreshBadgeAndHint();
     }
 }
 
-// Auto-save
 setInterval(saveToLocalStorage, 30000);
 window.addEventListener('beforeunload', saveToLocalStorage);
-
 document.addEventListener('DOMContentLoaded', init);
-console.log('FFCS Timetable Builder v1.1 — same-colour group assignment enabled');
+console.log('FFCS Timetable Builder v1.2 — click-to-select multi-slot mode');
