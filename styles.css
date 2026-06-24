@@ -13,6 +13,7 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
+    transition: background 0.35s ease, color 0.25s ease;
 }
 
 /* Mobile Menu Toggle Button */
@@ -71,163 +72,158 @@ body {
 .sidebar {
     background: white;
     padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(86,112,165,0.10);
     width: 200px;
     min-width: 180px;
     max-height: calc(100vh - 160px);
     overflow-y: auto;
     position: sticky;
     top: 20px;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, background 0.35s ease, box-shadow 0.3s ease;
 }
 
 .sidebar h3 {
     color: #5670a5;
     margin-bottom: 20px;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     text-align: center;
-    border-bottom: 2px solid #5670a5;
-    padding-bottom: 10px;
+    border-bottom: 2px solid #eef1f9;
+    padding-bottom: 12px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
 }
 
 .tool-btn {
     width: 100%;
-    padding: 12px;
-    margin-bottom: 10px;
-    background: #5670a5;
-    color: white;
+    padding: 11px 14px;
+    margin-bottom: 8px;
+    background: #f0f3fa;
+    color: #5670a5;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     display: flex;
     align-items: center;
     gap: 10px;
-    transition: all 0.3s ease;
-    font-weight: 500;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 .tool-btn:hover {
-    background: #445885;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: #5670a5;
+    color: white;
+    transform: translateX(3px);
+    box-shadow: 0 4px 14px rgba(86,112,165,0.22);
 }
 
 .tool-btn:active {
-    transform: translateY(0);
+    transform: translateX(1px) scale(0.98);
 }
 
 .tool-btn i {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    width: 16px;
+    text-align: center;
 }
 
-/* Color Palette */
+/* Color Palette — clean floating panel */
 .color-palette {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 2px solid #e0e0e0;
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #f7f9fc;
+    border: 1px solid #e8edf5;
     display: none;
+    animation: paletteIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
 }
 
 .color-palette.active {
     display: block;
-    animation: slideIn 0.3s ease;
 }
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.color-palette h4 {
-    color: #5670a5;
-    margin-bottom: 15px;
-    font-size: 1rem;
+@keyframes paletteIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
 .color-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 15px;
-    max-height: 220px;
-    overflow-y: auto;
-    padding-right: 2px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+    margin-bottom: 12px;
 }
 
 .color-option {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 8px;
+    border-radius: 7px;
     cursor: pointer;
     border: 2.5px solid transparent;
-    transition: all 0.18s ease;
-    position: relative;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
-}
-
-/* Shine overlay so every swatch looks polished */
-.color-option::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 6px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.55) 0%, transparent 60%);
-    pointer-events: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
 .color-option:hover {
-    transform: scale(1.13);
-    border-color: #5670a5;
-    box-shadow: 0 4px 12px rgba(86,112,165,0.28), inset 0 1px 0 rgba(255,255,255,0.7);
+    transform: scale(1.18);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    border-color: rgba(255,255,255,0.8);
+    z-index: 1;
+    position: relative;
 }
 
 .color-option.selected {
     border-color: #2c3e50;
-    box-shadow: 0 0 0 2px white, 0 0 0 4px #5670a5, 0 4px 10px rgba(86,112,165,0.2);
-    transform: scale(1.08);
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #5670a5;
+    transform: scale(1.1);
+    position: relative;
+    z-index: 2;
 }
 
-.custom-color-section {
-    margin-top: 15px;
+/* Custom colour row */
+.palette-custom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e6f0;
 }
 
-.custom-color-section label {
-    display: block;
-    margin-bottom: 8px;
-    color: #5670a5;
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.custom-color-section input[type="color"] {
-    width: 60px;
-    height: 40px;
+.palette-custom input[type="color"] {
+    width: 34px;
+    height: 34px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    padding: 2px;
+    background: none;
+    flex-shrink: 0;
 }
 
-.custom-color-section button {
-    padding: 8px 15px;
+.palette-custom-label {
+    flex: 1;
+    font-size: 0.82rem;
+    color: #7f8fa4;
+    font-weight: 500;
+}
+
+.palette-custom button {
+    padding: 6px 14px;
     background: #5670a5;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    margin-left: 10px;
-    transition: background 0.3s ease;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.15s ease;
 }
 
-.custom-color-section button:hover {
+.palette-custom button:hover {
     background: #445885;
+    transform: translateY(-1px);
 }
 
 /* Main Content */
@@ -272,43 +268,42 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Modern Minimal Search Bar */
-.search-container {
+/* Search + Action Bar */
+.search-action-bar {
     display: flex;
-    justify-content: center;
     align-items: center;
-    margin: 0 auto;
+    gap: 12px;
     width: 100%;
-    max-width: 500px;
 }
 
 .search-wrapper {
     position: relative;
-    width: 100%;
+    flex: 1;
     display: flex;
     align-items: center;
     background: white;
     border-radius: 50px;
     padding: 4px 4px 4px 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 12px rgba(86,112,165,0.10);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
     border: 2px solid transparent;
 }
 
 .search-wrapper:focus-within {
-    box-shadow: 0 4px 16px rgba(86, 112, 165, 0.2);
+    box-shadow: 0 4px 20px rgba(86,112,165,0.22);
     border-color: #5670a5;
 }
 
 .search-icon {
     color: #5670a5;
-    font-size: 1.1rem;
-    margin-right: 12px;
-    transition: all 0.3s ease;
+    font-size: 1rem;
+    margin-right: 10px;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
 }
 
 .search-wrapper:focus-within .search-icon {
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 #searchSlot {
@@ -316,39 +311,80 @@ body {
     border: none;
     outline: none;
     font-size: 0.95rem;
-    padding: 10px 8px;
+    padding: 9px 4px;
     color: #2c3e50;
     background: transparent;
+    min-width: 0;
 }
 
 #searchSlot::placeholder {
-    color: #95a5a6;
+    color: #b0bec5;
     font-size: 0.9rem;
 }
 
 .clear-btn {
-    background: #5670a5;
-    color: white;
+    background: #eef1f9;
+    color: #5670a5;
     border: none;
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    opacity: 0.9;
+    transition: background 0.2s ease, transform 0.25s ease;
+    flex-shrink: 0;
 }
 
 .clear-btn:hover {
-    opacity: 1;
-    background: #445885;
+    background: #5670a5;
+    color: white;
     transform: rotate(90deg);
 }
 
-.clear-btn i {
-    font-size: 0.9rem;
+/* Action icon buttons (dark mode, share) */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.action-icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: white;
+    color: #5670a5;
+    font-size: 1.05rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(86,112,165,0.13);
+    transition: background 0.25s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action-icon-btn:hover {
+    background: #5670a5;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(86,112,165,0.28);
+}
+
+.action-icon-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+.action-icon-btn.dark-active {
+    background: #f6e05e;
+    color: #1a1d27;
+}
+
+.action-icon-btn.dark-active:hover {
+    background: #ecc94b;
+    color: #1a1d27;
 }
 
 /* Timetable Wrapper */
@@ -1433,24 +1469,29 @@ body {
         letter-spacing: 1.5px;
     }
     
-    /* Search bar responsive */
-    .search-container {
-        max-width: 100%;
-        padding: 0;
+    /* Search + action bar responsive */
+    .search-action-bar {
+        gap: 8px;
     }
-    
+
     .search-wrapper {
         padding: 4px 4px 4px 15px;
     }
-    
+
+    .action-icon-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 0.95rem;
+    }
+
     #searchSlot {
         font-size: 0.9rem;
         padding: 8px 6px;
     }
-    
+
     .clear-btn {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
     }
 
     /* Scroll hint visible on mobile */
@@ -1705,7 +1746,7 @@ body {
 /* Print Styles */
 @media print {
     .sidebar,
-    .search-container,
+    .search-action-bar,
     .footer,
     .page-header,
     .mobile-menu-toggle,
@@ -1864,28 +1905,63 @@ body.dark .page-header {
     box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
 
-/* Search */
+/* Action icon buttons dark */
+body.dark .action-icon-btn {
+    background: #20243a;
+    color: #7f9cf5;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+body.dark .action-icon-btn:hover {
+    background: #7f9cf5;
+    color: #0f1117;
+}
+body.dark #darkModeBtn {
+    background: #f6e05e;
+    color: #0f1117;
+}
+body.dark #darkModeBtn:hover {
+    background: #ecc94b;
+    color: #0f1117;
+}
+
+/* Tool buttons dark */
+body.dark .tool-btn {
+    background: #20243a;
+    color: #a0aec0;
+}
+body.dark .tool-btn:hover {
+    background: #4a5568;
+    color: white;
+}
+
+/* Palette dark */
+body.dark .color-palette {
+    background: #20243a;
+    border-color: #2d3748;
+}
+body.dark .palette-custom { border-top-color: #2d3748; }
+body.dark .palette-custom-label { color: #4a5568; }
+body.dark .palette-custom button { background: #3a4f8a; }
+body.dark .palette-custom button:hover { background: #4a5f9a; }
+
+/* Search dark */
 body.dark .search-wrapper {
     background: #1a1d27;
     border-color: #2d3748;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-
 body.dark .search-wrapper:focus-within {
     border-color: #7f9cf5;
+    box-shadow: 0 4px 20px rgba(127,156,245,0.18);
 }
-
 body.dark #searchSlot {
     color: #e2e8f0;
     background: transparent;
 }
-
 body.dark #searchSlot::placeholder { color: #4a5568; }
-
 body.dark .search-icon { color: #7f9cf5; }
-
-body.dark .clear-btn { background: #2d3748; }
-body.dark .clear-btn:hover { background: #4a5568; }
+body.dark .clear-btn { background: #2d3748; color: #7f9cf5; }
+body.dark .clear-btn:hover { background: #7f9cf5; color: #0f1117; }
 
 /* Timetable */
 body.dark .timetable-wrapper {
@@ -2134,7 +2210,18 @@ body.dark .slot-badge.has-slot {
     background: linear-gradient(135deg, #1a3a2a, #122a1a);
 }
 
-/* Transition for smooth dark/light switch */
-body, body * {
-    transition: background-color 0.25s ease, color 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+/* Smooth dark/light transitions — targeted, not wildcard (avoids animation jank) */
+.sidebar, .tool-btn, .color-palette, .timetable-wrapper, .timetable th,
+.timetable td, .slot, .subject-panel, .subject-input, .venue-btn,
+.subjects-table-wrapper, .subjects-table th, .subjects-table td,
+.modal-content, .format-btn, .share-link-input, .copy-link-btn,
+.footer, .social-links a, .mobile-bottom-bar, .mob-bar-btn,
+.search-wrapper, .action-icon-btn, .clear-btn, .page-header,
+#searchSlot, .slot-select-hint, .add-subject-btn, .subjects-count,
+.subjects-table-header, .slot-badge {
+    transition:
+        background-color 0.28s ease,
+        color            0.22s ease,
+        border-color     0.22s ease,
+        box-shadow       0.22s ease;
 }

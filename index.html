@@ -53,49 +53,33 @@
                 <i class="fas fa-rotate-left"></i>
                 <span>Reset</span>
             </button>
-            <button class="tool-btn" id="darkModeBtn" title="Toggle Dark Mode">
-                <i class="fas fa-moon"></i>
-                <span>Dark Mode</span>
-            </button>
-            <button class="tool-btn" id="shareBtn" title="Share Timetable">
-                <i class="fas fa-share-nodes"></i>
-                <span>Share</span>
-            </button>
             
             <!-- Color Palette -->
             <div class="color-palette" id="colorPalette">
-                <h4>✦ Choose Shade</h4>
                 <div class="color-grid">
-                    <!-- Reds -->
                     <div class="color-option selected" data-color="#ffb3b3" style="background:#ffb3b3" title="Soft Red"></div>
                     <div class="color-option" data-color="#ff6b6b" style="background:#ff6b6b" title="Coral Red"></div>
                     <div class="color-option" data-color="#e63946" style="background:#e63946" title="Vivid Red"></div>
-                    <!-- Oranges -->
                     <div class="color-option" data-color="#ffd6a5" style="background:#ffd6a5" title="Soft Orange"></div>
                     <div class="color-option" data-color="#ff9f43" style="background:#ff9f43" title="Bright Orange"></div>
                     <div class="color-option" data-color="#fb5607" style="background:#fb5607" title="Deep Orange"></div>
-                    <!-- Yellows -->
                     <div class="color-option" data-color="#fff3b0" style="background:#fff3b0" title="Soft Yellow"></div>
                     <div class="color-option" data-color="#ffd93d" style="background:#ffd93d" title="Sunny Yellow"></div>
                     <div class="color-option" data-color="#f4c430" style="background:#f4c430" title="Golden Yellow"></div>
-                    <!-- Greens -->
                     <div class="color-option" data-color="#caffbf" style="background:#caffbf" title="Soft Green"></div>
                     <div class="color-option" data-color="#6bcb77" style="background:#6bcb77" title="Fresh Green"></div>
                     <div class="color-option" data-color="#2dc653" style="background:#2dc653" title="Vivid Green"></div>
-                    <!-- Blues -->
                     <div class="color-option" data-color="#bde0fe" style="background:#bde0fe" title="Soft Blue"></div>
                     <div class="color-option" data-color="#4d96ff" style="background:#4d96ff" title="Bright Blue"></div>
                     <div class="color-option" data-color="#1a6fbd" style="background:#1a6fbd" title="Deep Blue"></div>
-                    <!-- Indigos -->
                     <div class="color-option" data-color="#c5cae9" style="background:#c5cae9" title="Soft Indigo"></div>
                     <div class="color-option" data-color="#5c6bc0" style="background:#5c6bc0" title="Indigo"></div>
-                    <!-- Violets -->
                     <div class="color-option" data-color="#e0b0ff" style="background:#e0b0ff" title="Soft Violet"></div>
                     <div class="color-option" data-color="#a855f7" style="background:#a855f7" title="Vivid Violet"></div>
                 </div>
-                <div class="custom-color-section">
-                    <label for="customColor">Custom Color:</label>
-                    <input type="color" id="customColor" value="#ffb3b3">
+                <div class="palette-custom">
+                    <input type="color" id="customColor" value="#ffb3b3" title="Pick custom color">
+                    <span class="palette-custom-label">Custom</span>
                     <button id="applyCustom">Apply</button>
                 </div>
             </div>
@@ -108,13 +92,21 @@
                 <h1>FFCS TIMETABLE</h1>
             </div>
 
-            <!-- Modern Search Bar -->
-            <div class="search-container">
+            <!-- Search + Action Bar -->
+            <div class="search-action-bar">
                 <div class="search-wrapper">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="searchSlot" placeholder="Search slots (A11, B12, C21...)">
-                    <button id="clearSearch" class="clear-btn">
+                    <button id="clearSearch" class="clear-btn" title="Clear search">
                         <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="action-btns">
+                    <button class="action-icon-btn" id="darkModeBtn" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="action-icon-btn" id="shareBtn" title="Share Timetable">
+                        <i class="fas fa-share-nodes"></i>
                     </button>
                 </div>
             </div>

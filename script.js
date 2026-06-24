@@ -727,18 +727,17 @@ function toggleDarkMode() {
 }
 
 function updateDarkModeButton(isDark) {
-    const btn     = document.getElementById('darkModeBtn');
-    const mobBtn  = document.getElementById('mobDarkBtn');
+    const btn    = document.getElementById('darkModeBtn');
+    const mobBtn = document.getElementById('mobDarkBtn');
     if (btn) {
-        btn.innerHTML = isDark
-            ? '<i class="fas fa-sun"></i><span>Light</span>'
-            : '<i class="fas fa-moon"></i><span>Dark</span>';
-        btn.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+        btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        btn.title     = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+        btn.classList.toggle('dark-active', isDark);
     }
     if (mobBtn) {
         mobBtn.innerHTML = isDark
             ? '<i class="fas fa-sun"></i><span>Light</span>'
-            : '<i class="fas fa-moon"></i><span>Dark</span>';
+            : '<i class="fas fa-moon"></i><span>Theme</span>';
     }
 }
 
