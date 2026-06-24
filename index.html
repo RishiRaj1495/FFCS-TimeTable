@@ -53,6 +53,14 @@
                 <i class="fas fa-rotate-left"></i>
                 <span>Reset</span>
             </button>
+            <button class="tool-btn" id="darkModeBtn" title="Toggle Dark Mode">
+                <i class="fas fa-moon"></i>
+                <span>Dark Mode</span>
+            </button>
+            <button class="tool-btn" id="shareBtn" title="Share Timetable">
+                <i class="fas fa-share-nodes"></i>
+                <span>Share</span>
+            </button>
             
             <!-- Color Palette -->
             <div class="color-palette" id="colorPalette">
@@ -308,14 +316,43 @@
                 <i class="fas fa-palette"></i>
                 <span>Colors</span>
             </button>
+            <button class="mob-bar-btn" id="mobShareBtn" title="Share">
+                <i class="fas fa-share-nodes"></i>
+                <span>Share</span>
+            </button>
+            <button class="mob-bar-btn" id="mobDarkBtn" title="Dark Mode">
+                <i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
             <button class="mob-bar-btn" id="mobDownloadBtn" title="Download">
                 <i class="fas fa-download"></i>
                 <span>Save</span>
             </button>
-            <button class="mob-bar-btn danger" id="mobResetBtn" title="Reset">
-                <i class="fas fa-rotate-left"></i>
-                <span>Reset</span>
-            </button>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="shareModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-share-nodes"></i> Share Timetable</h3>
+                <button class="modal-close" id="closeShareModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Anyone with this link can view your timetable:</p>
+                <div class="share-link-box">
+                    <input type="text" id="shareLinkInput" class="share-link-input" readonly>
+                    <button id="copyLinkBtn" class="copy-link-btn">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div id="copySuccess" class="copy-success" style="display:none;">
+                    <i class="fas fa-check-circle"></i> Link copied to clipboard!
+                </div>
+                <p class="share-note"><i class="fas fa-info-circle"></i> The link encodes your full timetable — no server, fully private.</p>
+            </div>
         </div>
     </div>
 

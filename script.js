@@ -47,7 +47,9 @@ function init() {
     setupEventListeners();
     setupMobileMenu();
     setupMobileBottomBar();
-    loadFromLocalStorage();
+    initDarkMode();
+    const loadedFromLink = loadFromShareLink();
+    if (!loadedFromLink) loadFromLocalStorage();
     setupSubjectForm();
     renderSubjectsTable();
 }
@@ -161,6 +163,20 @@ function setupEventListeners() {
         downloadTimetable(this.dataset.format); hideDownloadModal();
     }));
 
+    // Dark Mode
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    if (darkModeBtn) darkModeBtn.addEventListener('click', toggleDarkMode);
+
+    // Share
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) shareBtn.addEventListener('click', showShareModal);
+    const closeShareModal = document.getElementById('closeShareModal');
+    if (closeShareModal) closeShareModal.addEventListener('click', hideShareModal);
+    const shareModal = document.getElementById('shareModal');
+    if (shareModal) shareModal.addEventListener('click', e => { if (e.target === shareModal) hideShareModal(); });
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    if (copyLinkBtn) copyLinkBtn.addEventListener('click', copyShareLink);
+
     document.addEventListener('keydown', handleKeyboardShortcuts);
     window.addEventListener('resize', handleResize);
 }
@@ -170,11 +186,13 @@ function handleResize() { if (window.innerWidth > 768) { closeMobileMenu(); docu
 // MOBILE BOTTOM BAR
 // ─────────────────────────────────────────────────────────────
 function setupMobileBottomBar() {
-    const mobMenuBtn    = document.getElementById('mobMenuBtn');
-    const mobUndoBtn    = document.getElementById('mobUndoBtn');
-    const mobColorBtn   = document.getElementById('mobColorBtn');
+    const mobMenuBtn     = document.getElementById('mobMenuBtn');
+    const mobUndoBtn     = document.getElementById('mobUndoBtn');
+    const mobColorBtn    = document.getElementById('mobColorBtn');
     const mobDownloadBtn = document.getElementById('mobDownloadBtn');
-    const mobResetBtn   = document.getElementById('mobResetBtn');
+    const mobResetBtn    = document.getElementById('mobResetBtn');
+    const mobShareBtn    = document.getElementById('mobShareBtn');
+    const mobDarkBtn     = document.getElementById('mobDarkBtn');
 
     if (mobMenuBtn)     mobMenuBtn.addEventListener('click',     openMobileMenu);
     if (mobUndoBtn)     mobUndoBtn.addEventListener('click',     undo);
@@ -184,6 +202,8 @@ function setupMobileBottomBar() {
     });
     if (mobDownloadBtn) mobDownloadBtn.addEventListener('click', showDownloadModal);
     if (mobResetBtn)    mobResetBtn.addEventListener('click',    reset);
+    if (mobShareBtn)    mobShareBtn.addEventListener('click',    showShareModal);
+    if (mobDarkBtn)     mobDarkBtn.addEventListener('click',     toggleDarkMode);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -684,12 +704,176 @@ function handleKeyboardShortcuts(e) {
     if (e.key==='Delete' && ctrlSelectedSlots.size>0) deleteSelected();
     if (e.key==='Escape') {
         if (downloadModal.style.display==='flex') hideDownloadModal();
+        const shareModal = document.getElementById('shareModal');
+        if (shareModal && shareModal.style.display==='flex') hideShareModal();
         if (window.innerWidth<=768 && sidebar.classList.contains('active')) closeMobileMenu();
         clearPendingGroup(); refreshBadgeAndHint();
     }
 }
 
+
 setInterval(saveToLocalStorage, 30000);
 window.addEventListener('beforeunload', saveToLocalStorage);
 document.addEventListener('DOMContentLoaded', init);
-console.log('FFCS Timetable Builder v1.2 — click-to-select multi-slot mode');
+console.log('FFCS Timetable Builder v2.1 — dark mode + share link');
+
+// ─────────────────────────────────────────────────────────────
+// DARK MODE
+// ─────────────────────────────────────────────────────────────
+function toggleDarkMode() {
+    const isDark = document.body.classList.toggle('dark');
+    localStorage.setItem('darkMode', isDark ? '1' : '0');
+    updateDarkModeButton(isDark);
+}
+
+function updateDarkModeButton(isDark) {
+    const btn     = document.getElementById('darkModeBtn');
+    const mobBtn  = document.getElementById('mobDarkBtn');
+    if (btn) {
+        btn.innerHTML = isDark
+            ? '<i class="fas fa-sun"></i><span>Light</span>'
+            : '<i class="fas fa-moon"></i><span>Dark</span>';
+        btn.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    }
+    if (mobBtn) {
+        mobBtn.innerHTML = isDark
+            ? '<i class="fas fa-sun"></i><span>Light</span>'
+            : '<i class="fas fa-moon"></i><span>Dark</span>';
+    }
+}
+
+function initDarkMode() {
+    const saved  = localStorage.getItem('darkMode');
+    const prefer = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = saved !== null ? saved === '1' : prefer;
+    if (isDark) document.body.classList.add('dark');
+    updateDarkModeButton(isDark);
+    // Listen for OS theme changes (only if user hasn't overridden)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (localStorage.getItem('darkMode') === null) {
+            if (e.matches) document.body.classList.add('dark');
+            else            document.body.classList.remove('dark');
+            updateDarkModeButton(e.matches);
+        }
+    });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHARE TIMETABLE VIA LINK
+// ─────────────────────────────────────────────────────────────
+function buildSharePayload() {
+    const slotData = Array.from(slots).map(s => ({
+        slot:    s.dataset.slot,
+        content: s.innerHTML,
+        bg:      s.style.backgroundColor || '',
+        color:   s.style.color || ''
+    }));
+    return { slots: slotData, subjects };
+}
+
+function encodePayload(payload) {
+    const json    = JSON.stringify(payload);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return encoded;
+}
+
+function decodePayload(encoded) {
+    try {
+        const json = decodeURIComponent(escape(atob(encoded)));
+        return JSON.parse(json);
+    } catch(e) {
+        return null;
+    }
+}
+
+function showShareModal() {
+    const payload  = buildSharePayload();
+    const encoded  = encodePayload(payload);
+    const base     = window.location.href.split('?')[0].split('#')[0];
+    const link     = `${base}?tt=${encoded}`;
+    const input    = document.getElementById('shareLinkInput');
+    const success  = document.getElementById('copySuccess');
+    if (input)   input.value = link;
+    if (success) success.style.display = 'none';
+    const modal    = document.getElementById('shareModal');
+    if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    setTimeout(() => { if (input) { input.select(); } }, 100);
+}
+
+function hideShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
+}
+
+function copyShareLink() {
+    const input   = document.getElementById('shareLinkInput');
+    const success = document.getElementById('copySuccess');
+    const btn     = document.getElementById('copyLinkBtn');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+        if (success) { success.style.display = 'flex'; setTimeout(() => success.style.display = 'none', 3000); }
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.style.background = '#27ae60';
+            setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2500);
+        }
+    }).catch(() => {
+        // Fallback for older browsers
+        input.select();
+        document.execCommand('copy');
+        if (success) { success.style.display = 'flex'; setTimeout(() => success.style.display = 'none', 3000); }
+    });
+}
+
+function loadFromShareLink() {
+    const params  = new URLSearchParams(window.location.search);
+    const encoded = params.get('tt');
+    if (!encoded) return false;
+    const payload = decodePayload(encoded);
+    if (!payload) return false;
+
+    // Restore slot visuals
+    if (payload.slots) {
+        payload.slots.forEach(d => {
+            const el = document.querySelector(`.slot[data-slot="${d.slot}"]`);
+            if (!el) return;
+            el.innerHTML             = d.content || '';
+            el.style.backgroundColor = d.bg      || '#eaedf4';
+            el.style.color           = d.color   || '#2c3e50';
+        });
+    }
+
+    // Restore subjects array
+    if (payload.subjects) {
+        subjects = payload.subjects;
+        saveSubjectsToLocalStorage();
+        renderSubjectsTable();
+    }
+
+    // Clean the URL so refreshing doesn't reload from link
+    const cleanUrl = window.location.href.split('?')[0];
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    // Show a banner
+    showSharedBanner();
+    return true;
+}
+
+function showSharedBanner() {
+    const banner = document.createElement('div');
+    banner.style.cssText = `
+        position:fixed; top:16px; left:50%; transform:translateX(-50%);
+        background:#27ae60; color:white; padding:10px 22px; border-radius:30px;
+        font-size:0.9rem; font-weight:600; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.2);
+        display:flex; align-items:center; gap:8px; animation:fadeIn 0.3s ease;
+    `;
+    banner.innerHTML = '<i class="fas fa-check-circle"></i> Shared timetable loaded!';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 3500);
+}
+
+// ─────────────────────────────────────────────────────────────
+// UPDATED INIT — include dark mode + share link loading
+// ─────────────────────────────────────────────────────────────
+
